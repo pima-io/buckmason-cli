@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto'
 import {Client} from '../../lib/client.js'
 import {parseCheckoutLineItemSpec} from '../../lib/items.js'
 import {readJsonObject} from '../../lib/json-input.js'
+import {renderMppError} from '../../lib/mpp.js'
 import {printJson, renderKeyValues, renderRecords} from '../../lib/output.js'
 
 export default class CheckoutPreview extends Command {
@@ -32,17 +33,21 @@ export default class CheckoutPreview extends Command {
       body,
       {dry_run: flags['dry-run'] || undefined},
       {
-        acceptStatuses: [402],
+        // 402 is the expected MPP challenge; 422 carries structured cart
+        // errors (fulfillment_unavailable, coupon issues) worth rendering.
+        acceptStatuses: [402, 422],
         headers: {'Idempotency-Key': flags['idempotency-key'] || randomUUID()},
       },
     )
 
     if (flags.json) {
       this.log(printJson({status: response.status, headers: response.headers, body: response.body}))
+      if (response.status === 422) this.exit(1)
       return
     }
 
     this.log(`Status: ${response.status}`)
+    if (renderMppError((message) => this.log(message), response.body)) this.exit(1)
     if (response.headers['www-authenticate']) this.log(`WWW-Authenticate: ${response.headers['www-authenticate']}`)
     renderCheckoutPreview(this, response.body)
   }

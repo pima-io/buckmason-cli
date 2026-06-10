@@ -1,6 +1,6 @@
 import {Command, Flags, Args} from '@oclif/core'
 import {Client} from '../../lib/client.js'
-import {printJson, renderKeyValues} from '../../lib/output.js'
+import {printJson, renderKeyValues, renderRecords} from '../../lib/output.js'
 
 export default class ProductsShow extends Command {
   static description = 'Show Buck Mason product detail, variants, imagery, and nearby stock.'
@@ -24,6 +24,19 @@ export default class ProductsShow extends Command {
       near_zip: flags['near-zip'],
       radius_mi: flags.radius,
     })
-    this.log(flags.json ? printJson(product) : renderKeyValues(product as Record<string, unknown>, 'table'))
+    if (flags.json) {
+      this.log(printJson(product))
+      return
+    }
+
+    this.log(renderKeyValues(product as Record<string, unknown>, 'table'))
+    const variants = ((product as any).variants || []).map((v: any) => ({
+      sku: v.sku,
+      size: v.size,
+      online: v.online?.label ?? '',
+      fulfillment: v.fulfillment?.mode ?? '',
+      pickup_at: (v.fulfillment?.pickup_locations || []).map((l: any) => l.name).join(', '),
+    }))
+    if (variants.length > 0) this.log(renderRecords(variants, ['sku', 'size', 'online', 'fulfillment', 'pickup_at'], 'table'))
   }
 }

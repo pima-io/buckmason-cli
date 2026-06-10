@@ -109,6 +109,15 @@ buckmason checkout preview --body checkout.json
 buckmason checkout charge --body checkout.json --acknowledged-total-cents 53200 --spt "$SPT" --confirm
 ```
 
+SKUs follow the same ship/pickup rules as buckmason.com: `buckmason stock
+check <sku>` reports `fulfillment.mode` (`ship_or_pickup`, `ship_only`,
+`pickup_only`, `unavailable`) and the eligible pickup stores. MPP checkout
+enforces the gate on both the preview and the charge call — a pickup-only SKU
+must carry a pickup location (`--line-item <sku>:<qty>:<pickup-location-slug>`
+or `--pickup-location-slug`), a ship-only SKU must not, and violations come
+back as a 422 `fulfillment_unavailable` error listing per-item reasons plus
+the stores that could fulfill them.
+
 ## Lookbooks
 
 The old Python utility scripts from `buck-mason-stylist-skill` have been ported

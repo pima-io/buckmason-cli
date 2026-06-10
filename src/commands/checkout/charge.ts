@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto'
 import {Client} from '../../lib/client.js'
 import {parseCheckoutLineItemSpec} from '../../lib/items.js'
 import {readJsonObject} from '../../lib/json-input.js'
+import {renderMppError} from '../../lib/mpp.js'
 import {printJson, renderKeyValues, renderRecords} from '../../lib/output.js'
 
 export default class CheckoutCharge extends Command {
@@ -43,6 +44,9 @@ export default class CheckoutCharge extends Command {
       body,
       {dry_run: flags['dry-run'] || undefined},
       {
+        // 422 carries structured cart errors (fulfillment_unavailable,
+        // total_mismatch, coupon issues) we render instead of raising raw.
+        acceptStatuses: [422],
         headers: {
           Authorization: `Payment ${flags.spt}`,
           'Idempotency-Key': flags['idempotency-key'] || randomUUID(),
@@ -54,8 +58,11 @@ export default class CheckoutCharge extends Command {
 
     if (flags.json) {
       this.log(printJson({status: response.status, headers: response.headers, body: response.body}))
+      if (response.status >= 400) this.exit(1)
       return
     }
+
+    if (renderMppError((message) => this.log(message), response.body)) this.exit(1)
 
     const receipt = response.headers['payment-receipt']
     this.log(renderKeyValues({
