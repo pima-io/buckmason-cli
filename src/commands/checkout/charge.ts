@@ -18,7 +18,7 @@ export default class CheckoutCharge extends Command {
     'pickup-location-slug': Flags.string({description: 'Optional cart-level pickup location slug'}),
     spt: Flags.string({required: true, description: 'Stripe Shared Payment Token returned by link-cli'}),
     'acknowledged-total-cents': Flags.integer({required: true, description: 'Total cents read back to and approved by the customer'}),
-    'idempotency-key': Flags.string({description: 'Idempotency key', default: randomUUID()}),
+    'idempotency-key': Flags.string({description: 'Idempotency key'}),
     'agent-identity': Flags.string({description: 'X-Agent-Identity header', default: 'buckmason-cli'}),
     'agent-model': Flags.string({description: 'X-Agent-Model header'}),
     'dry-run': Flags.boolean({description: 'Pass dry_run=true to the checkout endpoint'}),
@@ -45,7 +45,7 @@ export default class CheckoutCharge extends Command {
       {
         headers: {
           Authorization: `Payment ${flags.spt}`,
-          'Idempotency-Key': flags['idempotency-key'],
+          'Idempotency-Key': flags['idempotency-key'] || randomUUID(),
           'X-Agent-Identity': flags['agent-identity'],
           'X-Agent-Model': flags['agent-model'],
         },

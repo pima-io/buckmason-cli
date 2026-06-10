@@ -16,7 +16,7 @@ export default class CheckoutPreview extends Command {
     coupon: Flags.string({description: 'Optional coupon code'}),
     credit: Flags.string({multiple: true, description: 'Customer credit code. Repeat for multiple codes.'}),
     'pickup-location-slug': Flags.string({description: 'Optional cart-level pickup location slug'}),
-    'idempotency-key': Flags.string({description: 'Idempotency key', default: randomUUID()}),
+    'idempotency-key': Flags.string({description: 'Idempotency key'}),
     'dry-run': Flags.boolean({description: 'Pass dry_run=true to the checkout endpoint'}),
     host: Flags.string({description: 'PIMA host'}),
     company: Flags.string({description: 'PIMA company slug'}),
@@ -33,7 +33,7 @@ export default class CheckoutPreview extends Command {
       {dry_run: flags['dry-run'] || undefined},
       {
         acceptStatuses: [402],
-        headers: {'Idempotency-Key': flags['idempotency-key']},
+        headers: {'Idempotency-Key': flags['idempotency-key'] || randomUUID()},
       },
     )
 

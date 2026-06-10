@@ -267,6 +267,60 @@
         "status.js"
       ]
     },
+    "categories:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List Buck Mason category taxonomy from the public PIMA MCP API.",
+      "flags": {
+        "gender": {
+          "description": "m, w, or u",
+          "name": "gender",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "output": {
+          "name": "output",
+          "default": "table",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "table",
+            "json"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "categories:list",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "categories",
+        "list.js"
+      ]
+    },
     "cart:build": {
       "aliases": [],
       "args": {},
@@ -345,60 +399,6 @@
         "build.js"
       ]
     },
-    "categories:list": {
-      "aliases": [],
-      "args": {},
-      "description": "List Buck Mason category taxonomy from the public PIMA MCP API.",
-      "flags": {
-        "gender": {
-          "description": "m, w, or u",
-          "name": "gender",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "output": {
-          "name": "output",
-          "default": "table",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "options": [
-            "table",
-            "json"
-          ],
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "categories:list",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "categories",
-        "list.js"
-      ]
-    },
     "checkout:charge": {
       "aliases": [],
       "args": {},
@@ -472,7 +472,6 @@
         "idempotency-key": {
           "description": "Idempotency key",
           "name": "idempotency-key",
-          "default": "6931b1d4-e80a-4991-989c-11537a110789",
           "hasDynamicHelp": false,
           "multiple": false,
           "type": "option"
@@ -598,7 +597,6 @@
         "idempotency-key": {
           "description": "Idempotency key",
           "name": "idempotency-key",
-          "default": "61d22090-09d7-44e5-99c7-6ee110f1816e",
           "hasDynamicHelp": false,
           "multiple": false,
           "type": "option"
@@ -3143,5 +3141,5 @@
       ]
     }
   },
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
