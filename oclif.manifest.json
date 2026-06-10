@@ -399,74 +399,6 @@
         "list.js"
       ]
     },
-    "locations:list": {
-      "aliases": [],
-      "args": {},
-      "description": "List Buck Mason stores and warehouses exposed to the MCP catalog.",
-      "flags": {
-        "near-zip": {
-          "description": "ZIP for distance sorting",
-          "name": "near-zip",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "radius": {
-          "description": "Radius in miles",
-          "name": "radius",
-          "default": 25,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "pickup": {
-          "description": "Only pickup-enabled locations",
-          "name": "pickup",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "output": {
-          "name": "output",
-          "default": "table",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "options": [
-            "table",
-            "json"
-          ],
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "locations:list",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "locations",
-        "list.js"
-      ]
-    },
     "checkout:charge": {
       "aliases": [],
       "args": {},
@@ -540,7 +472,7 @@
         "idempotency-key": {
           "description": "Idempotency key",
           "name": "idempotency-key",
-          "default": "673e3ac9-68ec-4586-93b7-36fdd9a6a21c",
+          "default": "6931b1d4-e80a-4991-989c-11537a110789",
           "hasDynamicHelp": false,
           "multiple": false,
           "type": "option"
@@ -666,7 +598,7 @@
         "idempotency-key": {
           "description": "Idempotency key",
           "name": "idempotency-key",
-          "default": "0bd87683-bdbd-4b8c-a6c0-fdbd64ba6320",
+          "default": "61d22090-09d7-44e5-99c7-6ee110f1816e",
           "hasDynamicHelp": false,
           "multiple": false,
           "type": "option"
@@ -712,6 +644,74 @@
         "commands",
         "checkout",
         "preview.js"
+      ]
+    },
+    "locations:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List Buck Mason stores and warehouses exposed to the MCP catalog.",
+      "flags": {
+        "near-zip": {
+          "description": "ZIP for distance sorting",
+          "name": "near-zip",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "radius": {
+          "description": "Radius in miles",
+          "name": "radius",
+          "default": 25,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "pickup": {
+          "description": "Only pickup-enabled locations",
+          "name": "pickup",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "output": {
+          "name": "output",
+          "default": "table",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "table",
+            "json"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "locations:list",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "locations",
+        "list.js"
       ]
     },
     "lookbook:build": {
@@ -1586,7 +1586,7 @@
           "type": "option"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -1646,7 +1646,7 @@
       "description": "List item-level returnability and shipment status for an order.",
       "flags": {
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -1712,7 +1712,7 @@
           "type": "boolean"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -2060,7 +2060,7 @@
           "type": "option"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -2127,7 +2127,7 @@
           "type": "option"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -2196,7 +2196,7 @@
           "type": "option"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -2265,7 +2265,7 @@
           "type": "option"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -2339,7 +2339,7 @@
           "type": "option"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -2400,7 +2400,7 @@
           "type": "option"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -2461,7 +2461,7 @@
           "type": "option"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -2527,7 +2527,7 @@
           "type": "option"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -2666,7 +2666,7 @@
           "type": "boolean"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -3099,7 +3099,7 @@
           "type": "option"
         },
         "key": {
-          "description": "PIMA public API key. Or set BUCKMASON_PIMA_KEY.",
+          "description": "Override the built-in Buck Mason PIMA public API key.",
           "name": "key",
           "hasDynamicHelp": false,
           "multiple": false,

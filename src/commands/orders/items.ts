@@ -11,7 +11,7 @@ export default class OrdersItems extends Command {
   }
 
   static flags = {
-    key: Flags.string({description: 'PIMA public API key. Or set BUCKMASON_PIMA_KEY.'}),
+    key: Flags.string({description: 'Override the built-in Buck Mason PIMA public API key.'}),
     host: Flags.string({description: 'PIMA host'}),
     company: Flags.string({description: 'PIMA company slug'}),
     output: Flags.string({options: ['table', 'json'], default: 'table'}),

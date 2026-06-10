@@ -29,7 +29,7 @@ export default class ReturnsStart extends Command {
     'exchange-sku-id': Flags.integer({description: 'Exchange SKU id selected from returns exchange-options'}),
     type: Flags.string({description: 'Return type', options: ['original', 'exchange', 'credit']}),
     confirm: Flags.boolean({description: 'Required to actually create the return'}),
-    key: Flags.string({description: 'PIMA public API key. Or set BUCKMASON_PIMA_KEY.'}),
+    key: Flags.string({description: 'Override the built-in Buck Mason PIMA public API key.'}),
     host: Flags.string({description: 'PIMA host'}),
     company: Flags.string({description: 'PIMA company slug'}),
   }

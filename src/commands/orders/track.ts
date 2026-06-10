@@ -11,7 +11,7 @@ export default class OrdersTrack extends Command {
 
   static flags = {
     account: Flags.boolean({description: 'Search saved account history instead of using the guest order-code path'}),
-    key: Flags.string({description: 'PIMA public API key. Or set BUCKMASON_PIMA_KEY.'}),
+    key: Flags.string({description: 'Override the built-in Buck Mason PIMA public API key.'}),
     host: Flags.string({description: 'PIMA host'}),
     company: Flags.string({description: 'PIMA company slug'}),
     json: Flags.boolean({description: 'Print full order JSON'}),

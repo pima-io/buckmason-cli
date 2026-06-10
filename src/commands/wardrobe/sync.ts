@@ -9,7 +9,7 @@ export default class WardrobeSync extends Command {
   static flags = {
     pages: Flags.integer({description: 'Maximum order-history pages to fetch', default: 10}),
     out: Flags.string({description: 'Wardrobe cache path'}),
-    key: Flags.string({description: 'PIMA public API key. Or set BUCKMASON_PIMA_KEY.'}),
+    key: Flags.string({description: 'Override the built-in Buck Mason PIMA public API key.'}),
     host: Flags.string({description: 'PIMA host'}),
     company: Flags.string({description: 'PIMA company slug'}),
     json: Flags.boolean({description: 'Print JSON summary'}),

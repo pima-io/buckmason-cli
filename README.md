@@ -41,7 +41,6 @@ Single-order tracking and returns should use the order code first. It avoids an
 email round trip and does not issue a session token.
 
 ```bash
-export BUCKMASON_PIMA_KEY=...
 buckmason orders track BM123456
 buckmason orders history --order-code BM123456
 buckmason orders items BM123456
@@ -66,11 +65,11 @@ email, opens the PIMA link, confirms the security code, and clicks
 "Authorize your agent." The CLI stores only the scoped Bearer token returned by
 PIMA.
 
-Customer RMS API commands require PIMA's brand-public API key via flag or env.
-Account-wide commands also require the stored customer-agent token:
+Customer RMS API commands use Buck Mason's built-in brand-public PIMA key.
+Override it with `--key` or `BUCKMASON_PIMA_KEY` only for staging or another
+tenant. Account-wide commands also require the stored customer-agent token:
 
 ```bash
-export BUCKMASON_PIMA_KEY=...
 buckmason orders history
 buckmason orders track BM123456 --account
 buckmason returns address
@@ -93,7 +92,6 @@ customer already owns. The cache is local by default at
 data or shipping addresses.
 
 ```bash
-export BUCKMASON_PIMA_KEY=...
 buckmason wardrobe sync
 buckmason wardrobe list --category jean
 buckmason wardrobe show BMJEAN.IND31

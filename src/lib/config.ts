@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto'
 
 export const DEFAULT_HOST = 'https://pima.io'
 export const DEFAULT_COMPANY_SLUG = 'buckmason'
+export const DEFAULT_PIMA_KEY = 'pkLOMQfU1qM'
 
 export interface StoredConfig {
   host?: string
@@ -51,7 +52,7 @@ export async function resolveCompanySlug(slug?: string): Promise<string> {
 }
 
 export function resolvePimaKey(key?: string): string {
-  const resolved = key || process.env.BUCKMASON_PIMA_KEY
+  const resolved = key || process.env.BUCKMASON_PIMA_KEY || DEFAULT_PIMA_KEY
   if (!resolved) {
     throw new Error('Missing PIMA public API key. Pass --key or set BUCKMASON_PIMA_KEY.')
   }

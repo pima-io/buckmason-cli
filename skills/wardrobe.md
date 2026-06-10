@@ -11,9 +11,10 @@ If the local wardrobe may be stale, sync from authorized order history:
 buckmason wardrobe sync
 ```
 
-This requires the customer-agent token plus `BUCKMASON_PIMA_KEY`. The cache is
-local by default at `~/.buckmason/wardrobe.json` and contains product/order item
-facts only.
+This requires the customer-agent token. The CLI includes Buck Mason's
+brand-public PIMA key by default; set `BUCKMASON_PIMA_KEY` or pass `--key` only
+to override it for staging or another tenant. The cache is local by default at
+`~/.buckmason/wardrobe.json` and contains product/order item facts only.
 
 ## Example questions
 

@@ -8,7 +8,7 @@ export default class OrdersHistory extends Command {
   static flags = {
     page: Flags.integer({description: 'Page number', default: 1}),
     'order-code': Flags.string({description: 'Use the guest order-code path for a single order lookup'}),
-    key: Flags.string({description: 'PIMA public API key. Or set BUCKMASON_PIMA_KEY.'}),
+    key: Flags.string({description: 'Override the built-in Buck Mason PIMA public API key.'}),
     host: Flags.string({description: 'PIMA host'}),
     company: Flags.string({description: 'PIMA company slug'}),
     output: Flags.string({options: ['table', 'json'], default: 'table'}),

@@ -57,4 +57,6 @@ scoped Bearer token.
   Creates an exchange return item using the SKU id selected from
   `returns exchange-options`.
 
-RMS API commands require `BUCKMASON_PIMA_KEY` or `--key`.
+RMS API commands use Buck Mason's built-in brand-public PIMA key. Use
+`BUCKMASON_PIMA_KEY` or `--key` only to override it for staging or another
+tenant.
