@@ -11,14 +11,6 @@ npm install -g @buckmason/cli
 buckmason --help
 ```
 
-For local development:
-
-```bash
-npm install
-npm run build
-./bin/dev.js products search --q "pima"
-```
-
 ## Public Catalog
 
 These commands use public `/mcp/buckmason/*` endpoints and do not require auth.
@@ -152,3 +144,11 @@ The TypeScript builder writes deterministic `index.html`, `lookbook.json`, and
 Hosting guidance defaults to Cloudflare Pages via `wrangler`. Vercel is the
 next durable hosted fallback; S3 is opt-in only with an explicit customer bucket;
 local/Tailscale is for private review; 0x0.st is a temporary public fallback.
+
+## Local Development
+
+```bash
+npm install
+npm run build
+./bin/dev.js products search --q "pima"
+```

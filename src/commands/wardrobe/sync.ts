@@ -20,7 +20,7 @@ export default class WardrobeSync extends Command {
     const client = await Client.create({host: flags.host, companySlug: flags.company, key: flags.key})
     const orders: any[] = []
     for (let page = 1; page <= flags.pages; page += 1) {
-      const batch = await client.apiGet<any[]>('/api/order_history', {page}, {authenticated: true})
+      const batch = await client.apiGet<any[]>('/api/order_history', {all_orders: true, page}, {authenticated: true})
       if (!batch?.length) break
       orders.push(...batch)
     }

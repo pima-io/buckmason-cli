@@ -13,6 +13,7 @@ const orders = [
         color: 'Faded Indigo',
         size: '31',
         sku: 'BMJEAN.IND31',
+        gender: 'm',
         status: 'completed',
         rms_status: 'completed',
         shipment: {display_status: 'delivered'},
@@ -45,6 +46,7 @@ test('builds local wardrobe from order history and classifies ownership state', 
   const wardrobe = buildWardrobeFromOrders(orders)
   assert.equal(wardrobe.items.length, 3)
   assert.equal(findWardrobeItem(wardrobe.items, 'BMJEAN.IND31')?.status, 'owned')
+  assert.equal(findWardrobeItem(wardrobe.items, 'BMJEAN.IND31')?.gender, 'm')
   assert.equal(findWardrobeItem(wardrobe.items, 'BMJKT.TOBL')?.status, 'not_in_hand')
   assert.deepEqual(searchWardrobe(wardrobe.items, 'faded jeans').map((item) => item.sku), ['BMJEAN.IND31'])
 })

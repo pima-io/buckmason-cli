@@ -13,6 +13,7 @@ export interface WardrobeItem {
   size?: string
   sku?: string
   category?: string
+  gender?: string
   status: 'owned' | 'maybe_owned' | 'not_in_hand' | 'returned_or_exchanged'
   fulfillment: 'ship' | 'pickup' | 'unknown'
   pickup_location?: string
@@ -96,7 +97,7 @@ export function searchWardrobe(items: WardrobeItem[], query?: string, filters: {
     if (filters.status && item.status !== filters.status) return false
     if (filters.color && !String(item.color || '').toLowerCase().includes(filters.color.toLowerCase())) return false
     if (!terms.length) return true
-    const haystack = tokenize(`${item.product} ${item.color} ${item.category} ${item.sku} ${item.tags.join(' ')}`)
+    const haystack = tokenize(`${item.product} ${item.color} ${item.category} ${item.gender} ${item.sku} ${item.tags.join(' ')}`)
     return terms.every((term) => haystack.some((word) => word.includes(term)))
   })
 }
@@ -173,6 +174,7 @@ function normalizeOrderItem(order: Record<string, any>, item: Record<string, any
     size: item.size,
     sku: item.sku,
     category,
+    gender: item.gender || item.product_gender,
     status,
     fulfillment,
     pickup_location: item.fulfillment_location?.name || item.shipment?.pickup_location?.name,
