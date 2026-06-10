@@ -1,0 +1,90 @@
+{
+  "name": "@buckmason/cli",
+  "version": "0.1.0",
+  "description": "Customer-facing Buck Mason CLI for agents: catalog, stock, orders, returns, checkout handoffs, and lookbooks.",
+  "bin": {
+    "buckmason": "bin/run.js"
+  },
+  "type": "module",
+  "exports": "./dist/index.js",
+  "files": [
+    "/bin",
+    "/dist",
+    "/skills",
+    "/oclif.manifest.json"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pima-io/buckmason-cli.git"
+  },
+  "dependencies": {
+    "@oclif/core": "^4",
+    "@oclif/plugin-help": "^6",
+    "cli-table3": "^0.6",
+    "open": "^10",
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "oclif": "^4",
+    "tsx": "^4",
+    "typescript": "^5"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "./bin/dev.js",
+    "test": "node --import tsx --test test/*.test.ts",
+    "prepack": "tsc -b && oclif manifest"
+  },
+  "oclif": {
+    "bin": "buckmason",
+    "dirname": "buckmason",
+    "commands": "./dist/commands",
+    "topicSeparator": " ",
+    "plugins": [
+      "@oclif/plugin-help"
+    ],
+    "topics": {
+      "auth": {
+        "description": "Authorize this agent with a Buck Mason customer account"
+      },
+      "products": {
+        "description": "Search and inspect Buck Mason products"
+      },
+      "stock": {
+        "description": "Check online and nearby-store stock"
+      },
+      "locations": {
+        "description": "Stores and pickup locations"
+      },
+      "categories": {
+        "description": "Buck Mason taxonomy"
+      },
+      "cart": {
+        "description": "Build Shopify cart permalinks"
+      },
+      "checkout": {
+        "description": "MPP checkout preview and charge"
+      },
+      "orders": {
+        "description": "Customer order history and tracking"
+      },
+      "wardrobe": {
+        "description": "Local wardrobe memory from customer order history"
+      },
+      "returns": {
+        "description": "Return reasons, return status, and return creation"
+      },
+      "recommend": {
+        "description": "Buck Mason capsule recommendations"
+      },
+      "lookbook": {
+        "description": "Build, validate, score, and rank Buck Mason lookbooks"
+      }
+    }
+  }
+}
