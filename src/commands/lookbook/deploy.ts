@@ -7,7 +7,7 @@ export default class LookbookDeploy extends Command {
   static flags = {
     dir: Flags.string({required: true, description: 'Built lookbook directory'}),
     project: Flags.string({required: true, description: 'Cloudflare Pages project name'}),
-    'kv-id': Flags.string({description: 'Cloudflare KV namespace id for LOOKBOOK_VOTES. Defaults to an existing or newly created LOOKBOOK_VOTES namespace.'}),
+    'kv-id': Flags.string({description: 'Cloudflare KV namespace id for legacy LOOKBOOK_VOTES import. Defaults to an existing or newly created LOOKBOOK_VOTES namespace.'}),
     'lookbook-id': Flags.string({description: 'Override lookbook id for voting storage'}),
     'no-voting': Flags.boolean({description: 'Deploy read-only static lookbook without voting functions'}),
     'no-overwrite': Flags.boolean({description: 'Refuse to deploy if the Pages project already has deployments'}),

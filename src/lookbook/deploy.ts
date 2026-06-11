@@ -6,13 +6,15 @@ import {validateLookbookDir} from './validate.js'
 import {
   FAVICON_TAGS,
   VOTE_DOCK,
-  VOTE_POST_FUNCTION,
-  VOTE_ROOM_WORKER,
   VOTE_WIDGET_SCRIPT,
-  VOTES_GET_FUNCTION,
-  VOTES_LIVE_FUNCTION,
   VOTING_CSS,
 } from './voting-templates.js'
+import {
+  VOTE_POST_FUNCTION,
+  VOTE_ROOM_WORKER,
+  VOTES_GET_FUNCTION,
+  VOTES_LIVE_FUNCTION,
+} from './voting-runtime.js'
 
 const DEFAULT_VOTES_KV_TITLE = 'LOOKBOOK_VOTES'
 

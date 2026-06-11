@@ -44,9 +44,10 @@ vote-to-checkout handoffs.
 
 - `buckmason lookbook deploy --dir out/lookbook --project <project>`
   Prepares and deploys to Cloudflare Pages via `wrangler`. Voting is on by
-  default and the CLI reuses or creates a `LOOKBOOK_VOTES` KV namespace unless
-  `--kv-id` is provided. Pass `--no-voting` only for explicitly read-only
-  lookbooks.
+  default with a per-lookbook Durable Object and SQLite tally storage. The CLI
+  reuses or creates a `LOOKBOOK_VOTES` KV namespace unless `--kv-id` is
+  provided, but that namespace is only for legacy ballot import. Pass
+  `--no-voting` only for explicitly read-only lookbooks.
 
 - `buckmason lookbook hosting`
   Shows hosting hints for the built HTML. Default to Cloudflare Pages via

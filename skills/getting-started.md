@@ -82,7 +82,7 @@ stock/price and get explicit checkout approval.
 - Build premium HTML: `buckmason lookbook build --config config.json --picks picks.json --look-images runs/<id>/looks --out out/lookbook`
 - Build editorial HTML: `buckmason lookbook build --config config.json --picks picks.json --no-tryon --out out/lookbook`
 - Validate HTML: `buckmason lookbook validate --dir out/lookbook`
-- Deploy HTML: `buckmason lookbook deploy --dir out/lookbook --project <project>`; voting is on by default and the CLI reuses or creates a `LOOKBOOK_VOTES` KV namespace.
+- Deploy HTML: `buckmason lookbook deploy --dir out/lookbook --project <project>`; voting is on by default with a per-lookbook Durable Object, and the CLI reuses or creates a `LOOKBOOK_VOTES` KV namespace only for legacy ballot import.
 - Hosting hints: `buckmason lookbook hosting` (default: Cloudflare Pages via `wrangler`; fallback: Vercel, explicit-bucket S3, local/Tailscale, then temporary 0x0.st)
 - Rank votes: `buckmason lookbook rank-votes --url <lookbook-url>`
 

@@ -138,6 +138,9 @@ try-on images, then validate and deploy the finished `index.html` plus
 Hosted lookbooks are designed for collaborative review. Cloudflare Pages deploys
 include like/pass voting for whole looks and individual pieces by default, plus
 `lookbook rank-votes` to convert the current vote tally into a checkout handoff.
+The voting backend uses a per-lookbook Durable Object with SQLite tally storage,
+edge-cached reads, and batched WebSocket fanout; KV is only used to import older
+ballots when a previously deployed lookbook is upgraded.
 Votes are preference signals only; the agent still re-checks live stock, prices,
 fulfillment, discounts, credits, and explicit payment approval before charging.
 

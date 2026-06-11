@@ -106,12 +106,13 @@ test('builds and validates a deterministic HTML lookbook', async () => {
   assert.equal(validation.ok, true)
 })
 
-test('Cloudflare deploy prep injects stylist-skill voting parity assets', async () => {
+test('Cloudflare deploy prep injects optimized voting assets', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'buckmason-lookbook-voting-'))
   const configPath = path.join(dir, 'config.json')
   const picksPath = path.join(dir, 'picks.json')
   const outDir = path.join(dir, 'out')
   const assetPath = path.join(dir, 'tee.jpg')
+  let voteRoomWorkerDir: string | undefined
   await writeFile(assetPath, 'fake-image')
   await writeFile(configPath, JSON.stringify({
     lookbook_id: 'test-lookbook',
@@ -145,17 +146,42 @@ test('Cloudflare deploy prep injects stylist-skill voting parity assets', async 
     })
     assert.equal(prepared.voting, true)
     assert.ok(prepared.voteRoomWorkerDir)
+    voteRoomWorkerDir = prepared.voteRoomWorkerDir
   } finally {
     globalThis.fetch = originalFetch
   }
 
   const html = await readFile(path.join(outDir, 'index.html'), 'utf8')
+  const voteFunction = await readFile(path.join(outDir, 'functions/api/vote.js'), 'utf8')
+  const votesFunction = await readFile(path.join(outDir, 'functions/api/votes.js'), 'utf8')
+  const liveFunction = await readFile(path.join(outDir, 'functions/api/votes/live.js'), 'utf8')
+  const wranglerToml = await readFile(path.join(outDir, 'wrangler.toml'), 'utf8')
+  if (!voteRoomWorkerDir) throw new Error('missing generated VoteRoom worker directory')
+  const voteRoomWorker = await readFile(path.join(voteRoomWorkerDir, 'vote-room-worker.js'), 'utf8')
+  const tallyBlock = voteRoomWorker.slice(
+    voteRoomWorker.indexOf('  buildTally()'),
+    voteRoomWorker.indexOf('  activityBuckets()'),
+  )
+
   assert.match(html, /vote-look-inline/)
   assert.match(html, /vote-piece-inline/)
   assert.match(html, /class="vote-dock"/)
   assert.match(html, /connectLiveVotes/)
-  assert.match(await readFile(path.join(outDir, 'functions/api/votes/live.js'), 'utf8'), /Expected WebSocket upgrade/)
-  assert.match(await readFile(path.join(outDir, 'wrangler.toml'), 'utf8'), /script_name = "buckmason-test-lookbook-vote-room"/)
+  assert.match(voteFunction, /vote-room\.internal\/vote/)
+  assert.match(voteFunction, /env\.VOTE_ROOM/)
+  assert.doesNotMatch(voteFunction, /LOOKBOOK_VOTES\.put/)
+  assert.match(votesFunction, /vote-room\.internal\/tally/)
+  assert.match(votesFunction, /caches\.default/)
+  assert.doesNotMatch(votesFunction, /LOOKBOOK_VOTES\.(list|get)/)
+  assert.match(liveFunction, /Expected WebSocket upgrade/)
+  assert.match(liveFunction, /env\.VOTE_ROOM/)
+  assert.match(voteRoomWorker, /CREATE TABLE IF NOT EXISTS ballots/)
+  assert.match(voteRoomWorker, /INSERT OR REPLACE INTO ballots/)
+  assert.match(voteRoomWorker, /transactionSync/)
+  assert.match(voteRoomWorker, /legacy_kv_imported/)
+  assert.match(voteRoomWorker, /LOOKBOOK_VOTES\.list/)
+  assert.doesNotMatch(tallyBlock, /LOOKBOOK_VOTES/)
+  assert.match(wranglerToml, /script_name = "buckmason-test-lookbook-vote-room"/)
 })
 
 test('Cloudflare deploy prep defaults to the LOOKBOOK_VOTES namespace', async () => {
@@ -223,6 +249,7 @@ process.exit(1)
   const wranglerToml = await readFile(path.join(outDir, 'wrangler.toml'), 'utf8')
   assert.match(wranglerToml, /binding = "LOOKBOOK_VOTES"/)
   assert.match(wranglerToml, /id = "default-kv123"/)
+  assert.match(wranglerToml, /name = "VOTE_ROOM"/)
 })
 
 test('parses profile reference photos, sizes, and link payment preferences', () => {
