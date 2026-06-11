@@ -1847,6 +1847,26 @@
           "allowNo": false,
           "type": "boolean"
         },
+        "sort": {
+          "description": "Sort products by name or newest live signal",
+          "name": "sort",
+          "default": "name",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "name",
+            "newest"
+          ],
+          "type": "option"
+        },
+        "days": {
+          "description": "Recently-live window in days when --sort newest is used",
+          "name": "days",
+          "default": 90,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
         "limit": {
           "description": "Results per page",
           "name": "limit",

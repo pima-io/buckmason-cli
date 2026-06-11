@@ -18,6 +18,7 @@ These commands use public `/mcp/buckmason/*` endpoints and do not require auth.
 ```bash
 buckmason manifest
 buckmason products search --q "daily shirt" --gender m
+buckmason products search --gender m --sort newest --days 90
 buckmason products seasonal --gender m --days 45
 buckmason products show 10543 --near-zip 90291
 buckmason products imagery 10543
