@@ -101,7 +101,15 @@ recent Buck Mason catalog items and ranks them against the owned anchor item.
 
 Use `cart build` when the customer wants a normal Shopify cart link. Use
 `checkout preview` / `checkout charge` only for fully agent-driven MPP checkout
-after reading the live total back and receiving Link approval.
+after reading the live total back and receiving approval through Stripe Link CLI
+(`link-cli`).
+
+MPP checkout flow:
+
+1. Preview the checkout body with `buckmason checkout preview`.
+2. Read the live total back to the customer.
+3. Request payment approval in Stripe Link CLI and capture the returned SPT.
+4. Charge with `buckmason checkout charge`, passing that SPT via `--spt`.
 
 ```bash
 buckmason cart build --item 10543:L:1
@@ -121,8 +129,24 @@ the stores that could fulfill them.
 
 ## Lookbooks
 
-The old Python utility scripts from `buck-mason-stylist-skill` have been ported
-into TypeScript commands:
+The lookbook system turns a customer profile, event context, live Buck Mason
+catalog data, and curated picks into a hosted buying guide. It can build
+editorial lookbooks from product imagery or premium lookbooks with generated
+try-on images, then validate and deploy the finished `index.html` plus
+`lookbook.json` manifest.
+
+Hosted lookbooks are designed for collaborative review. Cloudflare Pages deploys
+include like/pass voting for whole looks and individual pieces by default, plus
+`lookbook rank-votes` to convert the current vote tally into a checkout handoff.
+Votes are preference signals only; the agent still re-checks live stock, prices,
+fulfillment, discounts, credits, and explicit payment approval before charging.
+
+Examples:
+
+- [Palm Springs trip lookbook](https://buckmason-2026-05-05-palm-springs-trip-v2.pages.dev/)
+- [LA dinners and weekend lookbook](https://buckmason-2026-05-11-la-dinners-weekend.pages.dev/)
+
+Lookbook workflows are exposed as TypeScript commands:
 
 ```bash
 buckmason lookbook profile --file profile.md
