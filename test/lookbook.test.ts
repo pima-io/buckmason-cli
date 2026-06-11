@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import {access, mkdir, mkdtemp, readFile, writeFile} from 'node:fs/promises'
+import {access, chmod, mkdir, mkdtemp, readFile, writeFile} from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
@@ -54,6 +54,7 @@ test('builds and validates a deterministic HTML lookbook', async () => {
     lookbook_title: 'Test Lookbook',
     lookbook_date: '2026-06-09',
     page_url: 'https://example.com/lookbook/',
+    stock_refresh: {preferred_location: 'Hayes Valley'},
     looks: [{id: 'look1', eyebrow: 'Look 01', title: 'First Look'}],
   }))
   await writeFile(picksPath, JSON.stringify([
@@ -69,6 +70,20 @@ test('builds and validates a deterministic HTML lookbook', async () => {
       url: 'https://www.buckmason.com/products/tee',
       image_url: assetPath,
       in_stock_online: {label: 'In stock'},
+      fulfillment: {pickup_locations: [{name: 'Hayes Valley', short_name: 'HV'}]},
+    },
+    {
+      look: 'look1',
+      id: 2,
+      sku: 'SKU2',
+      name: 'Jeans',
+      color: 'Indigo',
+      picked_size: '32',
+      price: '$198',
+      price_cents: 19800,
+      url: 'https://www.buckmason.com/products/jeans',
+      image_url: assetPath,
+      in_stock_online: {label: 'In stock'},
     },
   ]))
 
@@ -77,10 +92,15 @@ test('builds and validates a deterministic HTML lookbook', async () => {
   assert.match(html, /Test Lookbook/)
   assert.match(html, /Editorial tier/)
   assert.match(html, /stock-refresh/)
+  assert.match(html, /Size M · HV · In stock/)
+  assert.match(html, /Size 32 · Online · In stock/)
   assert.match(html, /Select this outfit/)
   assert.match(html, /thumb-1\.jpg/)
   await access(path.join(outDir, 'og.jpg'))
   await access(path.join(outDir, 'thumb-1.jpg'))
+  const manifest = JSON.parse(await readFile(result.manifestPath, 'utf8'))
+  assert.equal(manifest.items[0].stock.source, 'HV')
+  assert.equal(manifest.items[1].stock.source, 'Online')
 
   const validation = await validateLookbookDir(outDir)
   assert.equal(validation.ok, true)
@@ -136,6 +156,73 @@ test('Cloudflare deploy prep injects stylist-skill voting parity assets', async 
   assert.match(html, /connectLiveVotes/)
   assert.match(await readFile(path.join(outDir, 'functions/api/votes/live.js'), 'utf8'), /Expected WebSocket upgrade/)
   assert.match(await readFile(path.join(outDir, 'wrangler.toml'), 'utf8'), /script_name = "buckmason-test-lookbook-vote-room"/)
+})
+
+test('Cloudflare deploy prep defaults to the LOOKBOOK_VOTES namespace', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'buckmason-lookbook-default-voting-'))
+  const binDir = path.join(dir, 'bin')
+  const configPath = path.join(dir, 'config.json')
+  const picksPath = path.join(dir, 'picks.json')
+  const outDir = path.join(dir, 'out')
+  const assetPath = path.join(dir, 'tee.jpg')
+  const wranglerPath = path.join(binDir, 'wrangler')
+  await mkdir(binDir)
+  await writeFile(assetPath, 'fake-image')
+  await writeFile(configPath, JSON.stringify({
+    lookbook_id: 'default-voting-test',
+    lookbook_title: 'Default Voting Test',
+    lookbook_date: '2026-06-09',
+    page_url: 'https://example.com/lookbook/',
+    looks: [{id: 'look1', eyebrow: 'Look 01', title: 'First Look'}],
+  }))
+  await writeFile(picksPath, JSON.stringify([{
+    look: 'look1',
+    id: 1,
+    sku: 'SKU1',
+    name: 'Tee',
+    picked_size: 'M',
+    price_cents: 9800,
+    url: 'https://www.buckmason.com/products/tee',
+    image_url: assetPath,
+    in_stock_online: {label: 'In stock'},
+  }]))
+  await writeFile(wranglerPath, `#!/usr/bin/env node
+const args = process.argv.slice(2).join(' ')
+if (args === 'kv namespace list') {
+  console.log(JSON.stringify([{id: 'default-kv123', title: 'LOOKBOOK_VOTES'}]))
+  process.exit(0)
+}
+console.error('Unexpected wrangler args: ' + args)
+process.exit(1)
+`)
+  await chmod(wranglerPath, 0o755)
+
+  await buildHtmlLookbook({configPath, picksPath, outDir, noTryon: true})
+  const originalFetch = globalThis.fetch
+  const originalPath = process.env.PATH
+  const originalKvTitle = process.env.LOOKBOOK_VOTES_KV_TITLE
+  globalThis.fetch = (async () => {
+    throw new Error('network disabled in test')
+  }) as typeof fetch
+  process.env.PATH = `${binDir}${path.delimiter}${originalPath || ''}`
+  delete process.env.LOOKBOOK_VOTES_KV_TITLE
+  try {
+    const prepared = await prepareCloudflarePagesDeploy({
+      dir: outDir,
+      project: 'buckmason-default-voting-test',
+    })
+    assert.equal(prepared.voting, true)
+    assert.ok(prepared.voteRoomWorkerDir)
+  } finally {
+    globalThis.fetch = originalFetch
+    process.env.PATH = originalPath
+    if (originalKvTitle === undefined) delete process.env.LOOKBOOK_VOTES_KV_TITLE
+    else process.env.LOOKBOOK_VOTES_KV_TITLE = originalKvTitle
+  }
+
+  const wranglerToml = await readFile(path.join(outDir, 'wrangler.toml'), 'utf8')
+  assert.match(wranglerToml, /binding = "LOOKBOOK_VOTES"/)
+  assert.match(wranglerToml, /id = "default-kv123"/)
 })
 
 test('parses profile reference photos, sizes, and link payment preferences', () => {

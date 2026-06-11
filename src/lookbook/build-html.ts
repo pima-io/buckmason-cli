@@ -111,7 +111,7 @@ function buildManifest(config: any, picks: any[], assets: PreparedAssets, tier: 
   const items: any[] = []
   const manifestLooks = looks.map((look: any) => {
     const pieces = picks.filter((pick) => pickLookId(pick) === String(look.id))
-    for (const piece of pieces) items.push(manifestItem(piece, look))
+    for (const piece of pieces) items.push(manifestItem(piece, look, stockRefresh))
     return {
       id: look.id,
       eyebrow: look.eyebrow || look.id,
@@ -148,7 +148,7 @@ function buildManifest(config: any, picks: any[], assets: PreparedAssets, tier: 
   }
 }
 
-function manifestItem(piece: any, look: any) {
+function manifestItem(piece: any, look: any, stockRefresh: ReturnType<typeof stockRefreshConfig>) {
   const priceCents = Number(piece.price_cents || 0)
   const quantity = Number(piece.quantity || piece.qty || 1)
   const stock = onlineStock(piece)
@@ -171,6 +171,7 @@ function manifestItem(piece: any, look: any) {
     stock: {
       online: stock,
       label: stockLabel,
+      source: stockSourceLabelFor(piece, stockRefresh),
     },
   }
 }
@@ -258,7 +259,10 @@ ${ogWidth}${ogHeight}  <meta property="og:image:alt" content="Buck Mason lookboo
     .bm-btn-outline.selected::before { content: "\\2713 "; }
     #select-all-btn { margin-top: 0; }
     .select-outfit { margin-top: 20px; align-self: flex-start; }
-    .footer { text-align: center; font-family: var(--bm-cond); font-size: 11px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--bm-faint); padding: 48px 0 0; }
+    .footer { text-align: center; padding: 48px 0 0; }
+    .footer a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+    .footer-sites { font-family: var(--bm-cond); font-size: 11px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--bm-faint); }
+    .footer-credit { margin-top: 8px; font-family: var(--bm-body); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--bm-mute); }
     @media (max-width: 1023px) and (min-width: 700px) {
       .page { padding: 48px 32px 120px; }
       .look { grid-template-columns: 1fr; gap: 24px; padding: 48px 0; }
@@ -312,8 +316,11 @@ ${ogWidth}${ogHeight}  <meta property="og:image:alt" content="Buck Mason lookboo
       </div>
       <div class="meta">${escapeHtml(disclosure)}</div>
     </header>
-    ${(manifest.looks || []).map((look: any) => renderLook(look, picks)).join('')}
-    <div class="footer">Buck Mason &middot; Pima.io &middot; buckmason CLI</div>
+    ${(manifest.looks || []).map((look: any) => renderLook(look, picks, stockRefresh)).join('')}
+    <div class="footer">
+      <div class="footer-sites"><a href="https://www.buckmason.com/" target="_blank" rel="noopener noreferrer">www.buckmason.com</a> | <a href="https://www.pima.io/" target="_blank" rel="noopener noreferrer">www.pima.io</a></div>
+      <div class="footer-credit"><a href="https://www.npmjs.com/package/@buckmason/cli" target="_blank" rel="noopener noreferrer">Generated using the Buck Mason CLI</a></div>
+    </div>
   </div>
 
   <div id="cart-bar">
@@ -385,20 +392,43 @@ ${ogWidth}${ogHeight}  <meta property="og:image:alt" content="Buck Mason lookboo
       if (!needle) return null;
       return (locations || []).find(function(location) { return locationName(location).toLowerCase().includes(needle); }) || null;
     }
+    function preferredLocationCode(location) {
+      if (location && location.short_name) return String(location.short_name).toUpperCase();
+      const value = String((location && (location.name || location.location_name || location.store_name)) || STOCK_REFRESH.preferred_location || '');
+      const words = value.trim().split(/\\s+/).filter(Boolean);
+      return words.length ? words.map(function(word) { return word[0]; }).join('').slice(0, 3).toUpperCase() : '';
+    }
+    function stockAvailable(value) {
+      if (!value) return false;
+      if (value.in_stock === true || value.pickup_available === true || value.available === true) return true;
+      if (typeof value.count === 'number') return value.count > 0;
+      const text = String(value.label || value.status || '').toLowerCase();
+      if (/out|unavailable|sold/.test(text)) return false;
+      return /in stock|low stock|available/.test(text);
+    }
     function locationStockLabel(location) {
       if (!location) return '';
       return statusLabel(location.stock || location.inventory || location.availability || location);
+    }
+    function stockSourceLabel(snapshot) {
+      const location = preferredLocation(snapshot.locations || []);
+      if (location && stockAvailable(location)) return preferredLocationCode(location);
+      const pickup = preferredLocation((snapshot.fulfillment && snapshot.fulfillment.pickup_locations) || []);
+      if (pickup) return preferredLocationCode(pickup);
+      if (stockAvailable(snapshot.online) || statusLabel(snapshot.online)) return 'Online';
+      return '';
     }
     function refreshedStockLine(raw, fallbackSize) {
       const snapshot = stockPayload(raw) || {};
       const size = snapshot.size || fallbackSize || '';
       const parts = [];
       if (size) parts.push('Size ' + size);
-      const online = statusLabel(snapshot.online);
-      if (online) parts.push('Online: ' + online);
+      const source = stockSourceLabel(snapshot);
+      if (source) parts.push(source);
       const location = preferredLocation(snapshot.locations || []);
-      const locationLabel = locationStockLabel(location);
-      if (locationLabel) parts.push(STOCK_REFRESH.preferred_location + ': ' + locationLabel);
+      const locationLabel = source && source !== 'Online' ? locationStockLabel(location) : '';
+      const label = locationLabel || statusLabel(snapshot.online);
+      if (label) parts.push(label);
       return parts.length ? parts.join(' · ') : '';
     }
     function stockRefreshTime(date) {
@@ -614,7 +644,7 @@ ${ogWidth}${ogHeight}  <meta property="og:image:alt" content="Buck Mason lookboo
 </html>`
 }
 
-function renderLook(look: any, picks: any[]): string {
+function renderLook(look: any, picks: any[], stockRefresh: ReturnType<typeof stockRefreshConfig>): string {
   const pieces = picks.filter((pick) => pickLookId(pick) === String(look.id))
   if (!pieces.length) return ''
   const subtotal = pieces.reduce((sum, piece) => sum + Number(piece.price_cents || 0) * Number(piece.quantity || piece.qty || 1), 0)
@@ -627,14 +657,14 @@ function renderLook(look: any, picks: any[]): string {
         <div class="eyebrow">${escapeHtml(look.eyebrow || look.id)}</div>
         <h2>${escapeHtml(look.title || look.id)}</h2>
         <p class="note">${escapeHtml(look.note || '')}</p>
-${pieces.map((piece, index) => renderPiece(piece, look.id, index)).join('\n')}
+${pieces.map((piece, index) => renderPiece(piece, look.id, index, stockRefresh)).join('\n')}
         <div class="total">Look subtotal &middot; ${money(subtotal)}</div>
         <button type="button" class="bm-btn-outline select-outfit" data-target-look="${escapeHtml(look.id)}" onclick="toggleLook(this.dataset.targetLook, this)">Select this outfit</button>
       </div>
     </section>`
 }
 
-function renderPiece(piece: any, lookId: string, index: number): string {
+function renderPiece(piece: any, lookId: string, index: number, stockRefresh: ReturnType<typeof stockRefreshConfig>): string {
   const id = `cb-${lookId}-${index}`
   const priceCents = Number(piece.price_cents || 0)
   const quantity = Number(piece.quantity || piece.qty || 1)
@@ -653,26 +683,27 @@ function renderPiece(piece: any, lookId: string, index: number): string {
             <div class="name">${escapeHtml(piece.name || '')}</div>
             <div class="price">${money(priceCents)}</div>
             <a href="${escapeHtml(piece.url || '#')}" target="_blank" rel="noopener">View on buckmason.com</a>
-            ${stockRow(piece)}
+            ${stockRow(piece, stockRefresh)}
           </div>
         </label>`
 }
 
-function stockRow(piece: any): string {
+function stockRow(piece: any, stockRefresh: ReturnType<typeof stockRefreshConfig>): string {
   const sku = piece.sku || ''
   const size = piece.picked_size || piece.size || ''
   const disabled = sku ? '' : ' disabled'
   return `<div class="stock-row" data-stock-sku="${escapeHtml(sku)}" data-stock-size="${escapeHtml(size)}">
-              <span class="stock">${escapeHtml(stockLine(piece))}</span>
+              <span class="stock">${escapeHtml(stockLine(piece, stockRefresh))}</span>
               <button type="button" class="stock-refresh" aria-label="Refresh stock for ${escapeHtml(piece.name || 'item')}" title="Refresh stock" onclick="refreshPieceStock(event, this)"${disabled}><span class="stock-refresh-icon" aria-hidden="true">&#8635;</span></button>
               <span class="stock-checked" aria-live="polite"></span>
             </div>`
 }
 
-function stockLine(piece: any): string {
+function stockLine(piece: any, stockRefresh: ReturnType<typeof stockRefreshConfig>): string {
   const size = piece.picked_size || piece.size || ''
+  const source = stockSourceLabelFor(piece, stockRefresh)
   const label = stockLabelFor(piece) || '-'
-  return size ? `Size ${size} · ${label}` : label
+  return [size ? `Size ${size}` : '', source, label].filter(Boolean).join(' · ')
 }
 
 function stockLabelFor(piece: any): string {
@@ -685,6 +716,45 @@ function onlineStock(piece: any): any {
   if (piece?.in_stock_online) return piece.in_stock_online
   if (piece?.stock?.online) return piece.stock.online
   return piece?.stock || {}
+}
+
+function stockSourceLabelFor(piece: any, stockRefresh: ReturnType<typeof stockRefreshConfig>): string {
+  const preferredLocation = findPreferredLocation(piece?.locations || piece?.stock?.locations || [], stockRefresh)
+  if (preferredLocation && stockAvailable(preferredLocation)) return locationCode(preferredLocation, stockRefresh)
+  const pickupLocation = findPreferredLocation(piece?.fulfillment?.pickup_locations || [], stockRefresh)
+  if (pickupLocation) return locationCode(pickupLocation, stockRefresh)
+  return stockAvailable(onlineStock(piece)) || stockLabelFor(piece) ? 'Online' : ''
+}
+
+function findPreferredLocation(locations: any[], stockRefresh: ReturnType<typeof stockRefreshConfig>): any {
+  if (!Array.isArray(locations) || !locations.length) return null
+  const preferred = String(stockRefresh.preferred_location || '').toLowerCase()
+  const preferredCode = locationCode({name: stockRefresh.preferred_location}, stockRefresh).toLowerCase()
+  return locations.find((location) => {
+    const text = [
+      location?.name,
+      location?.location_name,
+      location?.store_name,
+      location?.short_name,
+      location?.label,
+    ].filter(Boolean).join(' ').toLowerCase()
+    return (preferred && text.includes(preferred)) || (preferredCode && text.split(/\s+/).includes(preferredCode))
+  }) || null
+}
+
+function locationCode(location: any, stockRefresh: ReturnType<typeof stockRefreshConfig>): string {
+  if (location?.short_name) return String(location.short_name).toUpperCase()
+  const value = String(location?.name || location?.location_name || location?.store_name || stockRefresh.preferred_location || '')
+  return value.trim().split(/\s+/).filter(Boolean).map((word) => word[0]).join('').slice(0, 3).toUpperCase()
+}
+
+function stockAvailable(value: any): boolean {
+  if (!value) return false
+  if (value.in_stock === true || value.pickup_available === true || value.available === true) return true
+  if (typeof value.count === 'number') return value.count > 0
+  const text = String(value.label || value.status || '').toLowerCase()
+  if (/\b(out|unavailable|sold)\b/.test(text)) return false
+  return /in stock|low stock|available/.test(text)
 }
 
 function stockRefreshConfig(config: any) {

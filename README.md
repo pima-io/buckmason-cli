@@ -136,7 +136,7 @@ buckmason lookbook verify-face --generated runs/<lookbook-id>/looks/look1.png --
 buckmason lookbook build --config lookbook-config.json --picks picks.json --look-images runs/<lookbook-id>/looks --out dist/lookbook
 buckmason lookbook build --config lookbook-config.json --picks picks.json --no-tryon --out dist/lookbook
 buckmason lookbook validate --dir dist/lookbook
-buckmason lookbook deploy --dir dist/lookbook --project buckmason-weekly-23 --kv-id "$LOOKBOOK_VOTES_KV_ID"
+buckmason lookbook deploy --dir dist/lookbook --project buckmason-weekly-23
 buckmason lookbook hosting
 buckmason lookbook hosting --intent permanent
 buckmason lookbook rank-votes --url https://example.pages.dev/

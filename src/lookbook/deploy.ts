@@ -14,6 +14,8 @@ import {
   VOTING_CSS,
 } from './voting-templates.js'
 
+const DEFAULT_VOTES_KV_TITLE = 'LOOKBOOK_VOTES'
+
 export interface PrepareDeployOptions {
   dir: string
   project: string
@@ -33,16 +35,49 @@ export async function prepareCloudflarePagesDeploy(options: PrepareDeployOptions
   const lookbookId = options.lookbookId || await readLookbookId(options.dir) || options.project.replace(/^buckmason-/, '')
   let voteRoomWorkerDir: string | undefined
   if (options.withVoting ?? true) {
-    if (!options.kvId) throw new Error('Voting is enabled but no KV namespace id was provided. Pass --kv-id or set LOOKBOOK_VOTES_KV_ID.')
+    const kvId = await resolveVotesKvId(options.kvId)
     await injectVotingUi(options.dir)
     await writeVotingFunctions(options.dir)
     const voteRoomWorkerName = `${options.project}-vote-room`
-    await writeWranglerToml(options.dir, options.project, lookbookId, options.kvId, voteRoomWorkerName)
-    voteRoomWorkerDir = await writeVoteRoomWorker(lookbookId, options.kvId, voteRoomWorkerName)
+    await writeWranglerToml(options.dir, options.project, lookbookId, kvId, voteRoomWorkerName)
+    voteRoomWorkerDir = await writeVoteRoomWorker(lookbookId, kvId, voteRoomWorkerName)
     await fetchFavicons(options.dir)
   }
 
   return {lookbookId, voting: options.withVoting ?? true, voteRoomWorkerDir}
+}
+
+async function resolveVotesKvId(explicitKvId?: string): Promise<string> {
+  if (explicitKvId?.trim()) return explicitKvId.trim()
+
+  const title = process.env.LOOKBOOK_VOTES_KV_TITLE || DEFAULT_VOTES_KV_TITLE
+  const existing = await findKvNamespaceId(title)
+  if (existing) return existing
+
+  const created = await runCapture('wrangler', ['kv', 'namespace', 'create', title])
+  const createdId = parseCreatedKvId(created)
+  if (!createdId) throw new Error(`Created KV namespace ${title}, but could not parse its id from wrangler output.`)
+  return createdId
+}
+
+async function findKvNamespaceId(title: string): Promise<string | null> {
+  const out = await runCapture('wrangler', ['kv', 'namespace', 'list'])
+  try {
+    const namespaces = JSON.parse(out)
+    const found = Array.isArray(namespaces)
+      ? namespaces.find((namespace: any) => namespace?.title === title || namespace?.name === title)
+      : null
+    return found?.id || null
+  } catch {
+    const escaped = escapeRegExp(title)
+    const match = out.match(new RegExp(`"id"\\s*:\\s*"([^"]+)"[\\s\\S]*?"(?:title|name)"\\s*:\\s*"${escaped}"`))
+      || out.match(new RegExp(`"(?:title|name)"\\s*:\\s*"${escaped}"[\\s\\S]*?"id"\\s*:\\s*"([^"]+)"`))
+    return match?.[1] || null
+  }
+}
+
+function parseCreatedKvId(output: string): string | null {
+  return output.match(/id\s*=\s*"([^"]+)"/)?.[1] || output.match(/"id"\s*:\s*"([^"]+)"/)?.[1] || null
 }
 
 export async function deployWithWrangler(options: {

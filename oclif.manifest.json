@@ -793,7 +793,7 @@
           "type": "option"
         },
         "kv-id": {
-          "description": "Cloudflare KV namespace id for LOOKBOOK_VOTES",
+          "description": "Cloudflare KV namespace id for LOOKBOOK_VOTES. Defaults to an existing or newly created LOOKBOOK_VOTES namespace.",
           "name": "kv-id",
           "hasDynamicHelp": false,
           "multiple": false,
@@ -1563,6 +1563,68 @@
         "verify-face.js"
       ]
     },
+    "stock:check": {
+      "aliases": [],
+      "args": {
+        "sku": {
+          "name": "sku",
+          "required": true
+        }
+      },
+      "description": "Check online and nearby-store stock for a SKU, including the ship/pickup fulfillment gate.",
+      "flags": {
+        "near-zip": {
+          "description": "ZIP for nearby stores",
+          "name": "near-zip",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "radius": {
+          "description": "Radius in miles",
+          "name": "radius",
+          "default": 25,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "json": {
+          "description": "Print JSON",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "stock:check",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "stock",
+        "check.js"
+      ]
+    },
     "orders:history": {
       "aliases": [],
       "args": {},
@@ -2063,68 +2125,6 @@
         "commands",
         "products",
         "show.js"
-      ]
-    },
-    "stock:check": {
-      "aliases": [],
-      "args": {
-        "sku": {
-          "name": "sku",
-          "required": true
-        }
-      },
-      "description": "Check online and nearby-store stock for a SKU, including the ship/pickup fulfillment gate.",
-      "flags": {
-        "near-zip": {
-          "description": "ZIP for nearby stores",
-          "name": "near-zip",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "radius": {
-          "description": "Radius in miles",
-          "name": "radius",
-          "default": 25,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "json": {
-          "description": "Print JSON",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "stock:check",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "stock",
-        "check.js"
       ]
     },
     "returns:address": {
@@ -3161,5 +3161,5 @@
       ]
     }
   },
-  "version": "0.3.1"
+  "version": "0.3.2"
 }

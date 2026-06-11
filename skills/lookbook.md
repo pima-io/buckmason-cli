@@ -42,9 +42,11 @@ vote-to-checkout handoffs.
 - `buckmason lookbook validate --dir out/lookbook`
   Checks that the local artifact has an index and machine-readable manifest.
 
-- `buckmason lookbook deploy --dir out/lookbook --project <project> --kv-id <id>`
+- `buckmason lookbook deploy --dir out/lookbook --project <project>`
   Prepares and deploys to Cloudflare Pages via `wrangler`. Voting is on by
-  default; pass `--no-voting` only for explicitly read-only lookbooks.
+  default and the CLI reuses or creates a `LOOKBOOK_VOTES` KV namespace unless
+  `--kv-id` is provided. Pass `--no-voting` only for explicitly read-only
+  lookbooks.
 
 - `buckmason lookbook hosting`
   Shows hosting hints for the built HTML. Default to Cloudflare Pages via

@@ -22,7 +22,7 @@ const OPTIONS: HostingOption[] = [
     deploy_hint: 'wrangler pages project create <project> --production-branch main; wrangler pages deploy <dir> --project-name <project> --branch main --commit-dirty=true',
     url_shape: 'https://<project>.pages.dev/',
     persistence: 'Permanent while the Pages project exists',
-    cautions: 'Public-by-URL. Voting needs a LOOKBOOK_VOTES KV namespace id. Do not run wrangler login inside the lookbook flow.',
+    cautions: 'Public-by-URL. Voting reuses or creates a LOOKBOOK_VOTES KV namespace. Do not run wrangler login inside the lookbook flow.',
   },
   {
     id: 'vercel',
