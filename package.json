@@ -1,6 +1,6 @@
 {
   "name": "@buckmason/cli",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Customer-facing Buck Mason CLI for agents: catalog, stock, orders, returns, checkout handoffs, and lookbooks.",
   "bin": {
     "buckmason": "bin/run.js"
@@ -42,6 +42,7 @@
   },
   "oclif": {
     "bin": "buckmason",
+    "description": "Customer-facing Buck Mason CLI for agents: catalog, stock, orders, returns, checkout handoffs, and lookbooks.\n\nAgent recipes:\n- Check daily for new arrivals, compare them against my wardrobe and saved sizes, and send me a lookbook only when something meaningfully improves my closet.\n- Watch my calendar for trips and events, then build location-aware lookbooks with owned outfits first and local pickup or shipping options only where they help.\n- Use my wardrobe, tomorrow's weather, and the event dress code to propose three looks, then identify one optional in-town purchase that would complete the best one.\n\nCheckout still requires explicit customer approval.",
     "dirname": "buckmason",
     "commands": "./dist/commands",
     "topicSeparator": " ",

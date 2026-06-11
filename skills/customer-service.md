@@ -7,6 +7,12 @@ Use this skill for order history, shipment tracking, and return starts.
 Use the order code for single-order tracking and most returns. It is the
 lowest-friction path: no email, no inbox access, and no customer-agent token.
 
+Buck Mason's public return policy advertises full refunds within 365 days of
+purchase for items that are unworn, unwashed, undamaged, and still have their
+original tags. Always run `buckmason orders items <order-code>` before promising
+return eligibility; PIMA/RMS is the source of truth for `rms_returnable`, final
+sale, alterations, shipment state, and policy exceptions.
+
 ```bash
 buckmason orders track <order-code>
 buckmason orders history --order-code <order-code>

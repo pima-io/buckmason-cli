@@ -11,6 +11,48 @@ npm install -g @buckmason/cli
 buckmason --help
 ```
 
+## Agent Recipes
+
+Use these prompts when you want an agent to combine catalog search, wardrobe
+memory, stock checks, lookbook generation, calendar context, and checkout
+handoffs. Checkout still requires explicit customer approval.
+
+- "Check daily for new arrivals, compare them against my wardrobe and saved
+  sizes, and send me a lookbook only when something meaningfully improves my
+  closet."
+- "Watch my calendar for trips and events, then build location-aware lookbooks
+  with owned outfits first and local pickup or shipping options only where they
+  help."
+- "Use my wardrobe, tomorrow's weather, and the event dress code to propose
+  three looks, then identify one optional in-town purchase that would complete
+  the best one."
+- "Before I visit a city, build me a local pickup lookbook using stores near my
+  hotel."
+- "Before a work trip, make a packing lookbook from pieces I already own, with
+  optional ship-to-hotel backups."
+- "When something I liked is back in stock in my size, tell me why it works with
+  my wardrobe."
+- "Audit my recent orders and suggest returns or exchanges before the return
+  window closes."
+- "Build a do-not-buy list by comparing new releases against similar pieces I
+  already own."
+- "Make a date-night, wedding, or conference lookbook from my wardrobe, then
+  fill the weakest gap with in-town inventory."
+- "If I am near a Buck Mason store, show me the best five things to try on based
+  on my wardrobe and recent favorites."
+- "Turn a calendar event into a lookbook using dress code, weather, venue,
+  transit, and pickup timing."
+- "After I vote on a lookbook, rank the winners and prepare a checkout handoff,
+  but stop before payment approval."
+- "Make me a seasonal capsule refresh: what to keep wearing, what to add, and
+  what to skip."
+- "Track items I passed on and tell me if they later become a better fit because
+  of weather, travel, sale, or stock changes."
+- "Generate a one-bag weekend lookbook using only pieces I own plus at most two
+  purchasable additions."
+- "Compare online shipping versus local pickup for the items in a lookbook and
+  recommend the fastest realistic path."
+
 ## Public Catalog
 
 These commands use public `/mcp/buckmason/*` endpoints and do not require auth.
@@ -32,6 +74,13 @@ buckmason recommend --gender m --occasion travel --dress-code smart_casual
 
 Single-order tracking and returns should use the order code first. It avoids an
 email round trip and does not issue a session token.
+
+Buck Mason's public return policy advertises full refunds within 365 days of
+purchase for items that are unworn, unwashed, undamaged, and still have their
+original tags. Treat that as policy context, not a local eligibility
+calculation: run `buckmason orders items <order-code>` before promising a return,
+because PIMA/RMS is the source of truth for `rms_returnable`, final sale,
+alterations, shipment state, and any policy exceptions.
 
 ```bash
 buckmason orders track BM123456

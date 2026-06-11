@@ -22,6 +22,12 @@ Public workflows do not require account authorization.
 Use order codes for single-order tracking and most returns. This path does not
 send email and does not issue a customer-agent token.
 
+Buck Mason's public return policy advertises full refunds within 365 days of
+purchase for items that are unworn, unwashed, undamaged, and still have their
+original tags. Always verify `buckmason orders items <order-code>` before
+promising a return; the PIMA/RMS `rms_returnable` value is the source of truth
+for final sale, alterations, shipment state, and policy exceptions.
+
 - Tracking: `buckmason orders track <order-code>`
 - One-order history: `buckmason orders history --order-code <order-code>`
 - Item returnability: `buckmason orders items <order-code>`
