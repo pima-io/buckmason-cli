@@ -30,6 +30,7 @@ export default class LookbookDeploy extends Command {
       project: flags.project,
       dryRun: flags['dry-run'],
       noOverwrite: flags['no-overwrite'],
+      voteRoomWorkerDir: prepared.voteRoomWorkerDir,
     })
     this.log(flags['dry-run'] ? `Dry-run URL would be ${url}` : `Deployed: ${url}`)
   }

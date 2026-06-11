@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
-import {mkdir, mkdtemp, readFile, writeFile} from 'node:fs/promises'
+import {access, mkdir, mkdtemp, readFile, writeFile} from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import {scoreEvent} from '../src/lookbook/score-event.ts'
 import {rankVotes, handoff} from '../src/lookbook/rank-votes.ts'
 import {buildHtmlLookbook} from '../src/lookbook/build-html.ts'
+import {prepareCloudflarePagesDeploy} from '../src/lookbook/deploy.ts'
 import {validateLookbookDir} from '../src/lookbook/validate.ts'
 import {parseProfile} from '../src/lookbook/profile.ts'
 import {buildLookbookImagePlan} from '../src/lookbook/image-generation.ts'
@@ -46,6 +47,8 @@ test('builds and validates a deterministic HTML lookbook', async () => {
   const configPath = path.join(dir, 'config.json')
   const picksPath = path.join(dir, 'picks.json')
   const outDir = path.join(dir, 'out')
+  const assetPath = path.join(dir, 'tee.jpg')
+  await writeFile(assetPath, 'fake-image')
   await writeFile(configPath, JSON.stringify({
     lookbook_id: 'test-lookbook',
     lookbook_title: 'Test Lookbook',
@@ -64,7 +67,7 @@ test('builds and validates a deterministic HTML lookbook', async () => {
       price: '$98',
       price_cents: 9800,
       url: 'https://www.buckmason.com/products/tee',
-      image_url: 'https://cdn.example.com/tee.jpg',
+      image_url: assetPath,
       in_stock_online: {label: 'In stock'},
     },
   ]))
@@ -73,9 +76,66 @@ test('builds and validates a deterministic HTML lookbook', async () => {
   const html = await readFile(result.indexPath, 'utf8')
   assert.match(html, /Test Lookbook/)
   assert.match(html, /Editorial tier/)
+  assert.match(html, /stock-refresh/)
+  assert.match(html, /Select this outfit/)
+  assert.match(html, /thumb-1\.jpg/)
+  await access(path.join(outDir, 'og.jpg'))
+  await access(path.join(outDir, 'thumb-1.jpg'))
 
   const validation = await validateLookbookDir(outDir)
   assert.equal(validation.ok, true)
+})
+
+test('Cloudflare deploy prep injects stylist-skill voting parity assets', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'buckmason-lookbook-voting-'))
+  const configPath = path.join(dir, 'config.json')
+  const picksPath = path.join(dir, 'picks.json')
+  const outDir = path.join(dir, 'out')
+  const assetPath = path.join(dir, 'tee.jpg')
+  await writeFile(assetPath, 'fake-image')
+  await writeFile(configPath, JSON.stringify({
+    lookbook_id: 'test-lookbook',
+    lookbook_title: 'Test Lookbook',
+    lookbook_date: '2026-06-09',
+    page_url: 'https://example.com/lookbook/',
+    looks: [{id: 'look1', eyebrow: 'Look 01', title: 'First Look'}],
+  }))
+  await writeFile(picksPath, JSON.stringify([{
+    look: 'look1',
+    id: 1,
+    sku: 'SKU1',
+    name: 'Tee',
+    picked_size: 'M',
+    price_cents: 9800,
+    url: 'https://www.buckmason.com/products/tee',
+    image_url: assetPath,
+    in_stock_online: {label: 'In stock'},
+  }]))
+
+  await buildHtmlLookbook({configPath, picksPath, outDir, noTryon: true})
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = (async () => {
+    throw new Error('network disabled in test')
+  }) as typeof fetch
+  try {
+    const prepared = await prepareCloudflarePagesDeploy({
+      dir: outDir,
+      project: 'buckmason-test-lookbook',
+      kvId: 'kv123',
+    })
+    assert.equal(prepared.voting, true)
+    assert.ok(prepared.voteRoomWorkerDir)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+
+  const html = await readFile(path.join(outDir, 'index.html'), 'utf8')
+  assert.match(html, /vote-look-inline/)
+  assert.match(html, /vote-piece-inline/)
+  assert.match(html, /class="vote-dock"/)
+  assert.match(html, /connectLiveVotes/)
+  assert.match(await readFile(path.join(outDir, 'functions/api/votes/live.js'), 'utf8'), /Expected WebSocket upgrade/)
+  assert.match(await readFile(path.join(outDir, 'wrangler.toml'), 'utf8'), /script_name = "buckmason-test-lookbook-vote-room"/)
 })
 
 test('parses profile reference photos, sizes, and link payment preferences', () => {

@@ -399,74 +399,6 @@
         "list.js"
       ]
     },
-    "locations:list": {
-      "aliases": [],
-      "args": {},
-      "description": "List Buck Mason stores and warehouses exposed to the MCP catalog.",
-      "flags": {
-        "near-zip": {
-          "description": "ZIP for distance sorting",
-          "name": "near-zip",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "radius": {
-          "description": "Radius in miles",
-          "name": "radius",
-          "default": 25,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "pickup": {
-          "description": "Only pickup-enabled locations",
-          "name": "pickup",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "output": {
-          "name": "output",
-          "default": "table",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "options": [
-            "table",
-            "json"
-          ],
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "locations:list",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "locations",
-        "list.js"
-      ]
-    },
     "checkout:charge": {
       "aliases": [],
       "args": {},
@@ -710,6 +642,74 @@
         "commands",
         "checkout",
         "preview.js"
+      ]
+    },
+    "locations:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List Buck Mason stores and warehouses exposed to the MCP catalog.",
+      "flags": {
+        "near-zip": {
+          "description": "ZIP for distance sorting",
+          "name": "near-zip",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "radius": {
+          "description": "Radius in miles",
+          "name": "radius",
+          "default": 25,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "pickup": {
+          "description": "Only pickup-enabled locations",
+          "name": "pickup",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "output": {
+          "name": "output",
+          "default": "table",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "table",
+            "json"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "locations:list",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "locations",
+        "list.js"
       ]
     },
     "lookbook:build": {
@@ -2045,6 +2045,68 @@
         "show.js"
       ]
     },
+    "stock:check": {
+      "aliases": [],
+      "args": {
+        "sku": {
+          "name": "sku",
+          "required": true
+        }
+      },
+      "description": "Check online and nearby-store stock for a SKU, including the ship/pickup fulfillment gate.",
+      "flags": {
+        "near-zip": {
+          "description": "ZIP for nearby stores",
+          "name": "near-zip",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "radius": {
+          "description": "Radius in miles",
+          "name": "radius",
+          "default": 25,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "json": {
+          "description": "Print JSON",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "stock:check",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "stock",
+        "check.js"
+      ]
+    },
     "returns:address": {
       "aliases": [],
       "args": {},
@@ -2701,68 +2763,6 @@
         "start.js"
       ]
     },
-    "stock:check": {
-      "aliases": [],
-      "args": {
-        "sku": {
-          "name": "sku",
-          "required": true
-        }
-      },
-      "description": "Check online and nearby-store stock for a SKU.",
-      "flags": {
-        "near-zip": {
-          "description": "ZIP for nearby stores",
-          "name": "near-zip",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "radius": {
-          "description": "Radius in miles",
-          "name": "radius",
-          "default": 25,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "json": {
-          "description": "Print JSON",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "stock:check",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "stock",
-        "check.js"
-      ]
-    },
     "wardrobe:list": {
       "aliases": [],
       "args": {},
@@ -3141,5 +3141,5 @@
       ]
     }
   },
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

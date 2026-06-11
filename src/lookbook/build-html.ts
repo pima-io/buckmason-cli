@@ -1,5 +1,7 @@
-import {copyFile, mkdir, readFile, writeFile} from 'node:fs/promises'
+import {access, copyFile, mkdir, mkdtemp, readFile, rm, writeFile} from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
+import {spawn} from 'node:child_process'
 
 export interface BuildLookbookOptions {
   configPath: string
@@ -15,6 +17,13 @@ export interface BuildLookbookResult {
   markerPath: string
 }
 
+interface PreparedAssets {
+  heroImages: Record<string, string>
+  ogImage: string
+  ogWidth?: number
+  ogHeight?: number
+}
+
 export async function buildHtmlLookbook(options: BuildLookbookOptions): Promise<BuildLookbookResult> {
   const config = JSON.parse(await readFile(options.configPath, 'utf8'))
   const picks = JSON.parse(await readFile(options.picksPath, 'utf8'))
@@ -27,9 +36,9 @@ export async function buildHtmlLookbook(options: BuildLookbookOptions): Promise<
 
   if (options.lookImagesDir) await verifyLookImagesMarker(options.lookImagesDir, lookbookId)
 
-  const heroImages = await prepareHeroImages(config, picks, options)
-  const manifest = buildManifest(config, picks, heroImages, options.noTryon ? 'editorial' : 'premium')
-  const html = renderHtml(config, picks, manifest)
+  const assets = await prepareAssets(config, picks, options)
+  const manifest = buildManifest(config, picks, assets, options.noTryon ? 'editorial' : 'premium')
+  const html = renderHtml(config, picks, manifest, assets, options.noTryon ? 'editorial' : 'premium')
   const indexPath = path.join(options.outDir, 'index.html')
   const manifestPath = path.join(options.outDir, 'lookbook.json')
   const markerPath = path.join(options.outDir, '.lookbook_id')
@@ -51,34 +60,57 @@ async function verifyLookImagesMarker(lookImagesDir: string, lookbookId: string)
   }
 }
 
-async function prepareHeroImages(
+async function prepareAssets(
   config: Record<string, any>,
   picks: Array<Record<string, any>>,
   options: BuildLookbookOptions,
-): Promise<Record<string, string>> {
+): Promise<PreparedAssets> {
   const heroImages: Record<string, string> = {}
   for (const look of config.looks || []) {
     const lookId = String(look.id)
+    const destName = `${lookId}.jpg`
+    const destPath = path.join(options.outDir, destName)
+
     if (options.noTryon) {
-      const firstPick = picks.find((pick) => String(pick.look || pick.look_id) === lookId)
-      heroImages[lookId] = imageUrl(firstPick) || ''
+      const firstPick = picks.find((pick) => pickLookId(pick) === lookId)
+      const source = sourceImageUrl(firstPick)
+      if (source) {
+        await writeJpegAsset(source, destPath, 1200)
+        heroImages[lookId] = destName
+      } else {
+        heroImages[lookId] = ''
+      }
       continue
     }
 
     const source = path.join(options.lookImagesDir || '', `${lookId}.png`)
-    const destName = `${lookId}.png`
-    await copyFile(source, path.join(options.outDir, destName))
+    await writeJpegAsset(source, destPath, 1200)
     heroImages[lookId] = destName
   }
 
-  return heroImages
+  for (const [index, piece] of picks.entries()) {
+    const source = sourceImageUrl(piece)
+    if (!source) continue
+    const thumbName = `thumb-${assetId(piece, index)}.jpg`
+    await writeJpegAsset(source, path.join(options.outDir, thumbName), 240)
+    piece.thumb_path = thumbName
+  }
+
+  const firstHero = Object.values(heroImages).find(Boolean)
+  const ogImage = 'og.jpg'
+  if (firstHero) {
+    await writeJpegAsset(path.join(options.outDir, firstHero), path.join(options.outDir, ogImage), 1200)
+  }
+  const dimensions = await imageDimensions(path.join(options.outDir, ogImage))
+  return {heroImages, ogImage, ogWidth: dimensions?.width, ogHeight: dimensions?.height}
 }
 
-function buildManifest(config: any, picks: any[], heroImages: Record<string, string>, tier: 'premium' | 'editorial') {
+function buildManifest(config: any, picks: any[], assets: PreparedAssets, tier: 'premium' | 'editorial') {
   const looks = config.looks || []
+  const stockRefresh = stockRefreshConfig(config)
   const items: any[] = []
   const manifestLooks = looks.map((look: any) => {
-    const pieces = picks.filter((pick) => String(pick.look || pick.look_id) === String(look.id))
+    const pieces = picks.filter((pick) => pickLookId(pick) === String(look.id))
     for (const piece of pieces) items.push(manifestItem(piece, look))
     return {
       id: look.id,
@@ -87,7 +119,7 @@ function buildManifest(config: any, picks: any[], heroImages: Record<string, str
       note: look.note || '',
       setting: look.setting || '',
       composition: look.composition || '',
-      hero_image: heroImages[String(look.id)] || '',
+      hero_image: assets.heroImages[String(look.id)] || '',
       subtotal_cents: pieces.reduce((sum, piece) => sum + Number(piece.price_cents || 0) * Number(piece.quantity || piece.qty || 1), 0),
       items: pieces.map((piece) => piece.sku || ''),
     }
@@ -104,6 +136,10 @@ function buildManifest(config: any, picks: any[], heroImages: Record<string, str
     subtitle: config.subtitle || '',
     page_url: normalizedPageUrl(config.page_url),
     currency: 'USD',
+    stock_refresh: {
+      ...stockRefresh,
+      endpoint: `${stockRefresh.base_url}/stock/:sku`,
+    },
     disclosure: tier === 'premium'
       ? 'AI-generated try-on previews - not photographs of real garments on the customer.'
       : 'Editorial tier - product imagery from buckmason.com, no AI try-on.',
@@ -115,7 +151,8 @@ function buildManifest(config: any, picks: any[], heroImages: Record<string, str
 function manifestItem(piece: any, look: any) {
   const priceCents = Number(piece.price_cents || 0)
   const quantity = Number(piece.quantity || piece.qty || 1)
-  const stock = piece.in_stock_online || piece.stock || {}
+  const stock = onlineStock(piece)
+  const stockLabel = stockLabelFor(piece)
   return {
     sku: piece.sku || '',
     product_id: piece.id || piece.product_id,
@@ -128,168 +165,621 @@ function manifestItem(piece: any, look: any) {
     price_cents: priceCents,
     price: money(priceCents),
     url: piece.url || '',
-    image_url: imageUrl(piece),
+    thumb: piece.thumb_path || '',
+    image_url: sourceImageUrl(piece),
     fullsize_url: fullsizeUrl(piece),
     stock: {
       online: stock,
-      label: typeof stock === 'object' ? stock.label || '' : String(stock || ''),
+      label: stockLabel,
     },
   }
 }
 
-function renderHtml(config: any, picks: any[], manifest: any): string {
-  const looks = manifest.looks || []
+function renderHtml(config: any, picks: any[], manifest: any, assets: PreparedAssets, tier: 'premium' | 'editorial'): string {
   const title = escapeHtml(manifest.title || 'Buck Mason Lookbook')
   const subtitle = escapeHtml(manifest.subtitle || '')
-  const pageUrl = escapeHtml(manifest.page_url || '')
-  const ogImage = escapeHtml(absoluteAssetUrl(manifest.page_url, looks[0]?.hero_image || looks[0]?.items?.[0]?.image_url || ''))
+  const pageUrl = normalizedPageUrl(manifest.page_url)
+  const ogImage = absoluteAssetUrl(pageUrl, assets.ogImage)
+  const ogWidth = assets.ogWidth ? `  <meta property="og:image:width" content="${assets.ogWidth}">\n` : ''
+  const ogHeight = assets.ogHeight ? `  <meta property="og:image:height" content="${assets.ogHeight}">\n` : ''
+  const disclosure = tier === 'premium'
+    ? 'AI-generated try-on previews - not photographs of real garments on the customer.'
+    : 'Editorial tier - product imagery from buckmason.com, no AI try-on.'
+  const stockRefresh = stockRefreshConfig(config)
 
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${title} - Buck Mason</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title} &middot; Buck Mason</title>
   <meta name="description" content="${subtitle}">
+
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Buck Mason">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${subtitle}">
-  <meta property="og:url" content="${pageUrl}">
-  <meta property="og:image" content="${ogImage}">
+  <meta property="og:url" content="${escapeHtml(pageUrl)}">
+  <meta property="og:image" content="${escapeHtml(ogImage)}">
+${ogWidth}${ogHeight}  <meta property="og:image:alt" content="Buck Mason lookbook - ${title}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="${subtitle}">
-  <meta name="twitter:image" content="${ogImage}">
+  <meta name="twitter:image" content="${escapeHtml(ogImage)}">
   <link rel="alternate" type="application/json" href="lookbook.json" title="Lookbook manifest">
+
   <style>
-    :root{--ink:#2d2926;--muted:#6f675f;--line:#e5e0d8;--paper:#fbfaf8;--accent:#f3f0ea}
-    *{box-sizing:border-box}
-    body{margin:0;background:#fff;color:var(--ink);font-family:"Helvetica Neue",Arial,sans-serif;font-size:14px;line-height:1.5}
-    a{color:inherit}
-    .page{max-width:1180px;margin:0 auto;padding:56px 28px 128px}
-    .eyebrow,.btn,.piece-name,.total,.footer{font-family:"Helvetica Neue Condensed","Arial Narrow",Arial,sans-serif;text-transform:uppercase;letter-spacing:.02em}
-    .eyebrow{font-size:11px;color:var(--muted)}
-    h1,h2{font-family:"Helvetica Neue Condensed","Arial Narrow",Arial,sans-serif;text-transform:uppercase;letter-spacing:.02em;line-height:1.02;margin:8px 0 12px}
-    h1{font-size:24px} h2{font-size:20px}
-    .note{color:var(--muted);max-width:760px}
-    .cover{border-bottom:1px solid var(--line);padding-bottom:28px}
-    .look{display:grid;grid-template-columns:5fr 4fr;gap:44px;padding:56px 0;border-bottom:1px solid var(--line)}
-    .look-hero img{width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--accent);display:block;cursor:zoom-in}
-    .pieces{display:grid}
-    .piece{display:grid;grid-template-columns:24px 84px 1fr;gap:14px;align-items:start;padding:16px 0;border-top:1px solid var(--line)}
-    .piece:first-child{border-top:1px solid var(--ink)}
-    .piece input{width:16px;height:16px;margin-top:4px}
-    .piece img{width:84px;aspect-ratio:3/4;object-fit:cover;background:var(--accent);cursor:zoom-in}
-    .piece-name{font-weight:700;font-size:13px}
-    .piece-meta,.piece a{color:var(--muted);font-size:12px}
-    .total{font-weight:700;border-top:1px solid var(--ink);padding-top:16px;margin-top:16px}
-    .btn{border:1px solid var(--ink);background:#fff;color:var(--ink);min-height:42px;padding:11px 18px;font-size:12px;cursor:pointer}
-    .btn:hover,.btn.primary{background:var(--ink);color:#fff}
-    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
-    .footer{text-align:center;color:var(--muted);font-size:11px;padding-top:40px}
-    #cart-bar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--ink);color:#fff;padding:14px 28px;display:none;align-items:center;justify-content:space-between;gap:16px}
-    #cart-bar.show{display:flex}
-    #cart-bar button{background:#fff;color:var(--ink);border:1px solid #fff;padding:12px 18px;cursor:pointer}
-    #handoff{display:none;position:fixed;inset:28px;z-index:10;background:#fff;box-shadow:0 0 60px rgba(0,0,0,.25);padding:28px;overflow:auto}
-    #handoff.show{display:block}
-    #handoff pre{white-space:pre-wrap;background:var(--paper);padding:16px;line-height:1.5;max-height:52vh;overflow:auto}
-    #lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;z-index:20;padding:24px}
-    #lightbox.show{display:flex}
-    #lightbox img{max-width:100%;max-height:100%;object-fit:contain}
-    @media(max-width:760px){.page{padding:34px 16px 118px}.look{grid-template-columns:1fr;gap:18px;padding:36px 0}.piece{grid-template-columns:22px 64px 1fr}.piece img{width:64px}#cart-bar{padding:12px 16px;align-items:stretch}#handoff{inset:12px;padding:18px}}
+    :root {
+      --bm-cond: "Acumin Pro Condensed", "Helvetica Neue Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --bm-body: "Acumin Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --bm-ink: #333; --bm-mute: #666; --bm-faint: #999; --bm-line: #e5e2dd; --bm-accent: #f3f1ef;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: var(--bm-body); color: var(--bm-ink); background: #fff; margin: 0; font-size: 14px; line-height: 1.5; }
+    a { color: var(--bm-mute); }
+    .eyebrow { font-family: var(--bm-cond); font-size: 11px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--bm-mute); }
+    h1 { font-family: var(--bm-cond); font-weight: 600; font-size: 22px; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; margin: 8px 0 12px; color: var(--bm-ink); }
+    h2 { font-family: var(--bm-cond); font-weight: 600; font-size: 20px; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; margin: 8px 0 12px; color: var(--bm-ink); }
+    p.note { color: var(--bm-mute); margin: 0 0 24px; }
+    .page { max-width: 1200px; margin: 0 auto; padding: 64px 32px 120px; }
+    .cover { text-align: left; padding-bottom: 16px; }
+    .cover .meta { color: var(--bm-faint); font-size: 12px; margin-top: 12px; }
+    .look { display: grid; grid-template-columns: 5fr 4fr; gap: 48px; padding: 64px 0; }
+    .look-hero img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
+    .look-pieces { display: flex; flex-direction: column; gap: 0; }
+    .piece { display: grid; grid-template-columns: 24px 88px 1fr; gap: 16px; align-items: start; padding: 18px 0; border-top: 1px solid var(--bm-line); cursor: pointer; }
+    .piece:first-of-type { border-top: 1px solid var(--bm-ink); }
+    .piece input[type="checkbox"] { width: 16px; height: 16px; margin-top: 4px; appearance: none; -webkit-appearance: none; border: 1px solid var(--bm-ink); cursor: pointer; position: relative; flex-shrink: 0; }
+    .piece input[type="checkbox"]:checked { background: var(--bm-ink); }
+    .piece input[type="checkbox"]:checked::after { content: ""; position: absolute; left: 4px; top: 0; width: 4px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+    .piece img { width: 88px; aspect-ratio: 3/4; object-fit: cover; display: block; background: #fafafa; }
+    .piece-info { display: flex; flex-direction: column; gap: 4px; }
+    .piece .name { font-family: var(--bm-cond); font-weight: 600; font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase; }
+    .piece .price { font-size: 14px; }
+    .piece a { font-size: 11px; }
+    .stock-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+    .piece .stock { font-size: 11px; color: var(--bm-mute); }
+    .stock-refresh { width: 22px; height: 22px; border: 1px solid #d7d3cd; background: #fbfaf8; color: #6a655d; display: inline-grid; place-items: center; padding: 0; font: 14px/1 var(--bm-body); cursor: pointer; transition: color 120ms, border-color 120ms, background 120ms, opacity 120ms; flex: 0 0 auto; }
+    .stock-refresh:hover { color: var(--bm-ink); border-color: #9a9389; background: #f4f1ed; }
+    .stock-refresh:disabled { cursor: default; opacity: 0.52; }
+    .stock-refresh.is-fresh { color: #2f7048; border-color: #cfdccf; background: #f5f8f2; }
+    .stock-refresh.is-error { color: #8a4238; border-color: #ead6d1; background: #fff7f5; }
+    .stock-refresh[aria-busy="true"] .stock-refresh-icon { animation: bm-spin 700ms linear infinite; }
+    .stock-checked { color: var(--bm-faint); font-size: 10px; }
+    @keyframes bm-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .total { font-family: var(--bm-cond); font-weight: 700; font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase; padding-top: 18px; margin-top: 18px; border-top: 1px solid var(--bm-ink); }
+    .cover-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .bm-btn-outline { display: inline-block; font-family: var(--bm-cond); font-weight: 600; font-size: 12px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--bm-ink); background: transparent; border: 1px solid var(--bm-ink); padding: 12px 20px; min-height: 44px; cursor: pointer; transition: background 120ms, color 120ms, border-color 120ms, opacity 120ms; }
+    .bm-btn-outline:hover { background: var(--bm-ink); color: #fff; }
+    .bm-btn-outline:disabled { opacity: 0.62; cursor: default; }
+    .bm-btn-outline.is-accent { background: var(--bm-ink); color: #fff; }
+    .bm-btn-outline.is-accent:hover { background: #111; border-color: #111; }
+    .bm-btn-outline.selected { background: var(--bm-ink); color: #fff; }
+    .bm-btn-outline.selected::before { content: "\\2713 "; }
+    #select-all-btn { margin-top: 0; }
+    .select-outfit { margin-top: 20px; align-self: flex-start; }
+    .footer { text-align: center; font-family: var(--bm-cond); font-size: 11px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--bm-faint); padding: 48px 0 0; }
+    @media (max-width: 1023px) and (min-width: 700px) {
+      .page { padding: 48px 32px 120px; }
+      .look { grid-template-columns: 1fr; gap: 24px; padding: 48px 0; }
+      .piece { grid-template-columns: 24px 96px 1fr; }
+      .piece img { width: 96px; }
+    }
+    @media (max-width: 699px) {
+      body { font-size: 13px; }
+      .page { padding: 32px 16px 120px; }
+      .look { grid-template-columns: 1fr; gap: 16px; padding: 32px 0; }
+      .piece { grid-template-columns: 22px 64px 1fr; gap: 12px; padding: 16px 0; }
+      .piece img { width: 64px; }
+      h1 { font-size: 20px; }
+      h2 { font-size: 18px; }
+      .footer { padding-top: 32px; }
+    }
+    #cart-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bm-ink); color: #fff; padding: 16px 32px; display: none; align-items: center; justify-content: space-between; gap: 16px; font-family: var(--bm-cond); font-size: 12px; letter-spacing: 0.02em; text-transform: uppercase; z-index: 5; }
+    #cart-bar.show { display: flex; }
+    #cart-bar .cart-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    #cart-bar button { background: #fff; color: var(--bm-ink); border: 1px solid #fff; padding: 14px 24px; font: inherit; letter-spacing: 0.02em; cursor: pointer; min-height: 44px; }
+    #cart-bar button.secondary { background: transparent; color: #fff; border-color: rgba(255,255,255,0.46); }
+    #cart-bar button:disabled { opacity: 0.62; cursor: default; }
+    @media (max-width: 699px) { #cart-bar { padding: 12px 16px; font-size: 10px; align-items: stretch; } #cart-bar .cart-actions { display: grid; grid-template-columns: 1fr 1fr; } #cart-bar button { padding: 12px 16px; font-size: 10px; } }
+    #handoff { display: none; position: fixed; inset: 32px; background: #fff; z-index: 10; padding: 32px; overflow: auto; box-shadow: 0 0 60px rgba(0,0,0,.25); }
+    #handoff.show { display: block; }
+    #handoff h2 { margin-top: 0; }
+    #handoff p { color: var(--bm-mute); }
+    #handoff pre { background: var(--bm-accent); border: 0; padding: 16px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; max-height: 50dvh; overflow: auto; }
+    #handoff .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    #handoff button { font-family: var(--bm-cond); letter-spacing: 0.02em; text-transform: uppercase; font-size: 11px; cursor: pointer; min-height: 44px; padding: 12px 24px; }
+    #handoff .primary { background: var(--bm-ink); color: #fff; border: 0; }
+    #handoff .secondary { background: transparent; color: var(--bm-ink); border: 1px solid var(--bm-ink); }
+    @media (max-width: 699px) { #handoff { inset: 12px; padding: 20px; } }
+    .look-hero img, .piece img { cursor: zoom-in; }
+    #lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.94); display: none; align-items: center; justify-content: center; z-index: 20; padding: 32px; cursor: zoom-out; }
+    #lightbox.show { display: flex; }
+    #lightbox img { max-width: min(100%, 1600px); max-height: 100%; object-fit: contain; cursor: default; display: block; }
+    #lightbox .close { position: absolute; top: 12px; right: 12px; background: transparent; color: #fff; border: 0; font: 24px/1 var(--bm-cond); cursor: pointer; padding: 12px 16px; min-height: 44px; min-width: 44px; }
+    @media (max-width: 699px) { #lightbox { padding: 12px; } }
   </style>
 </head>
 <body>
   <div class="page">
     <header class="cover">
-      <div class="eyebrow">Buck Mason - ${escapeHtml(manifest.lookbook_id)}</div>
+      <div class="eyebrow">Buck Mason &middot; Stylist &middot; ${escapeHtml(manifest.lookbook_id)}</div>
       <h1>${title}</h1>
       <p class="note">${subtitle}</p>
-      <div class="actions">
-        <button type="button" class="btn" onclick="toggleAll()">Select all looks</button>
-        <button type="button" class="btn primary" onclick="openTopVotedHandoff()">Give me the winners</button>
+      <div class="cover-actions">
+        <button type="button" id="select-all-btn" class="bm-btn-outline" onclick="toggleAll(this)">Select all looks</button>
+        <button type="button" id="top-voted-btn" class="bm-btn-outline is-accent" onclick="openTopVotedHandoff(this)">Give me the winners</button>
       </div>
-      <p class="piece-meta">${escapeHtml(manifest.disclosure)}</p>
+      <div class="meta">${escapeHtml(disclosure)}</div>
     </header>
-    ${looks.map((look: any) => renderLook(look, picks)).join('\n')}
-    <div class="footer">Buck Mason - Pima.io - buckmason CLI</div>
+    ${(manifest.looks || []).map((look: any) => renderLook(look, picks)).join('')}
+    <div class="footer">Buck Mason &middot; Pima.io &middot; buckmason CLI</div>
   </div>
+
   <div id="cart-bar">
-    <span><span id="cart-count">0</span> selected - <span id="cart-total">$0</span></span>
-    <button type="button" onclick="openHandoff()">Send to my stylist</button>
-  </div>
-  <div id="handoff" role="dialog" aria-modal="true">
-    <h2 id="handoff-title">Tell your stylist</h2>
-    <p id="handoff-intro" class="note">Speak this aloud to a voice agent, or paste it into a chat. Your agent will confirm shipping or pickup, coupon, and credit before charging.</p>
-    <pre id="handoff-text"></pre>
-    <div class="actions">
-      <button type="button" class="btn primary" onclick="copyHandoff(this)">Copy to clipboard</button>
-      <button type="button" class="btn" onclick="closeHandoff()">Close</button>
+    <span><span id="cart-count">0</span> selected &middot; <span id="cart-total">$0</span></span>
+    <div class="cart-actions">
+      <button type="button" class="secondary" onclick="openTopVotedHandoff(this)">Give me the winners</button>
+      <button type="button" onclick="openHandoff()">Send to my stylist</button>
     </div>
   </div>
-  <div id="lightbox" onclick="closeLightbox(event)"><img id="lightbox-img" alt=""></div>
-  <script type="application/json" id="lookbook-data">${escapeHtml(JSON.stringify(manifest))}</script>
+
+  <div id="handoff" role="dialog" aria-modal="true" aria-labelledby="handoff-title">
+    <h2 id="handoff-title">Tell your stylist</h2>
+    <p id="handoff-intro">Speak this aloud to a voice agent, or paste it into a chat. Your agent will confirm shipping or pickup, coupon, and credit before charging.</p>
+    <pre id="handoff-text"></pre>
+    <div class="actions">
+      <button id="copy-btn" class="primary" onclick="copyHandoff(this)">Copy to clipboard</button>
+      <button class="secondary" onclick="closeHandoff()">Close</button>
+    </div>
+  </div>
+
+  <div id="lightbox" onclick="closeLightbox(event)">
+    <button class="close" type="button" aria-label="Close image" onclick="closeLightbox(event, true)">&times;</button>
+    <img id="lightbox-img" alt="">
+  </div>
+
   <script>
-    const LOOKBOOK = JSON.parse(document.getElementById('lookbook-data').textContent);
-    function selected(){return [...document.querySelectorAll('.piece input:checked')].map(el=>({name:el.dataset.name,size:el.dataset.size,sku:el.dataset.sku,qty:Number(el.dataset.qty||1),cents:Number(el.dataset.priceCents||0)}))}
-    function money(c){return '$'+(c/100).toFixed(c%100===0?0:2)}
-    function refresh(){const items=selected();document.getElementById('cart-count').textContent=items.length;document.getElementById('cart-total').textContent=money(items.reduce((s,i)=>s+i.cents*i.qty,0));document.getElementById('cart-bar').classList.toggle('show',items.length>0)}
-    function toggleAll(){const boxes=[...document.querySelectorAll('.piece input')];const all=boxes.length&&boxes.every(b=>b.checked);boxes.forEach(b=>b.checked=!all);refresh()}
-    function handoffText(items=selected()){if(!items.length)return '';const subtotal=items.reduce((s,i)=>s+i.cents*i.qty,0);return ['Buck Mason - '+LOOKBOOK.title+' ('+LOOKBOOK.date+')','',"I'd like to order:",...items.map(i=>'- '+i.name+' - size '+i.size+' - '+money(i.cents)+(i.qty>1?' (x'+i.qty+')':'')+(i.sku?' - SKU '+i.sku:'')),'','Subtotal at pick: '+money(subtotal),'Please confirm shipping or pickup, any coupon or credit, and run checkout.'].join('\\n')}
-    function showHandoff(text,title){document.getElementById('handoff-title').textContent=title||'Tell your stylist';document.getElementById('handoff-text').textContent=text;document.getElementById('handoff').classList.add('show')}
-    function openHandoff(){showHandoff(handoffText())}
-    function closeHandoff(){document.getElementById('handoff').classList.remove('show')}
-    async function copyHandoff(btn){await navigator.clipboard?.writeText(document.getElementById('handoff-text').textContent).catch(()=>{});btn.textContent='Copied'}
-    function bucket(raw){const up=Number(raw?.up||0),down=Number(raw?.down||0),total=up+down;return{up,down,total,net:up-down,likeRate:total?up/total:null}}
-    function topVotes(tally){const looks=Object.fromEntries((LOOKBOOK.looks||[]).map((l,i)=>[l.id,{...l,order:i,votes:bucket(tally?.looks?.[l.id])}]));return (LOOKBOOK.items||[]).map((item,i)=>{const v=bucket(tally?.items?.[item.sku]);const lv=looks[item.look_id]?.votes||bucket();const recommended=(v.total>=1&&v.net>0)||(v.total===0&&lv.total>=1&&lv.net>0);return{...item,v,lv,recommended,score:v.net*100+v.up*8-v.down*12+lv.net*12-i}}).filter(i=>i.recommended).sort((a,b)=>b.score-a.score).slice(0,8)}
-    async function openTopVotedHandoff(){try{const res=await fetch('/api/votes?public=1&fresh=1',{headers:{accept:'application/json'}});if(!res.ok)throw new Error('votes unavailable');const tally=(await res.json()).tally;const picks=topVotes(tally);showHandoff(handoffText(picks),'Top-voted picks')}catch{showHandoff('Ask my stylist agent to rank the votes for '+location.href+' and order the top-voted picks.','Top-voted picks')}}
-    document.addEventListener('change',e=>{if(e.target.matches('.piece input'))refresh()})
-    document.addEventListener('click',e=>{const img=e.target.closest('.look-hero img,.piece img');if(!img)return;e.preventDefault();document.getElementById('lightbox-img').src=img.dataset.fullsize||img.src;document.getElementById('lightbox').classList.add('show')},true)
-    function closeLightbox(e){if(e&&e.target&&e.target.id==='lightbox-img')return;document.getElementById('lightbox').classList.remove('show')}
-    document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox()})
+    const LOOKBOOK_ID = ${jsonForScript(manifest.lookbook_id)};
+    const LOOKBOOK_TITLE = ${jsonForScript(manifest.title)};
+    const LOOKBOOK_DATE = ${jsonForScript(manifest.date)};
+    const HANDOFF_INTRO = 'Speak this aloud to a voice agent, or paste it into a chat. Your agent will confirm shipping or pickup, coupon, and credit before charging.';
+    const WINNER_INTRO = 'Copy this prompt to ask your stylist agent for the top-voted pieces. Your agent still checks live stock, price, shipping, coupon, and credit before charging.';
+    const STOCK_REFRESH = ${jsonForScript(stockRefresh)};
+    function selected() {
+      return Array.from(document.querySelectorAll('.piece input[type="checkbox"]:checked')).map(function(el) {
+        return {
+          name: el.dataset.name,
+          size: el.dataset.size,
+          qty: parseInt(el.dataset.qty, 10),
+          cents: parseInt(el.dataset.priceCents, 10),
+          sku: el.dataset.sku || ''
+        };
+      });
+    }
+    function fmtMoney(c) { return '$' + (c / 100).toFixed(c % 100 === 0 ? 0 : 2); }
+    function stockRefreshUrl(sku) {
+      const url = new URL(STOCK_REFRESH.base_url + '/stock/' + encodeURIComponent(sku));
+      url.searchParams.set('near_zip', STOCK_REFRESH.near_zip);
+      url.searchParams.set('radius_mi', STOCK_REFRESH.radius_mi);
+      return url.toString();
+    }
+    function stockPayload(raw) { return raw && (raw.variant || raw.stock || raw.data) || raw; }
+    function statusLabel(value) {
+      if (!value) return '';
+      if (typeof value === 'string') return value;
+      if (value.label) return value.label;
+      if (value.status) return String(value.status).replace(/_/g, ' ');
+      if (typeof value.count === 'number') {
+        if (value.count === 0) return 'Out of stock';
+        if (value.count < 10) return 'Low stock (' + value.count + ' left)';
+        return 'In stock';
+      }
+      return '';
+    }
+    function locationName(location) {
+      return [location && location.name, location && location.location_name, location && location.store_name, location && location.short_name, location && location.label].filter(Boolean).join(' ');
+    }
+    function preferredLocation(locations) {
+      const needle = String(STOCK_REFRESH.preferred_location || '').toLowerCase();
+      if (!needle) return null;
+      return (locations || []).find(function(location) { return locationName(location).toLowerCase().includes(needle); }) || null;
+    }
+    function locationStockLabel(location) {
+      if (!location) return '';
+      return statusLabel(location.stock || location.inventory || location.availability || location);
+    }
+    function refreshedStockLine(raw, fallbackSize) {
+      const snapshot = stockPayload(raw) || {};
+      const size = snapshot.size || fallbackSize || '';
+      const parts = [];
+      if (size) parts.push('Size ' + size);
+      const online = statusLabel(snapshot.online);
+      if (online) parts.push('Online: ' + online);
+      const location = preferredLocation(snapshot.locations || []);
+      const locationLabel = locationStockLabel(location);
+      if (locationLabel) parts.push(STOCK_REFRESH.preferred_location + ': ' + locationLabel);
+      return parts.length ? parts.join(' · ') : '';
+    }
+    function stockRefreshTime(date) {
+      return (date || new Date()).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+    async function refreshPieceStock(event, btn) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      const row = btn.closest('.stock-row');
+      const sku = row && row.dataset.stockSku;
+      const label = row && row.querySelector('.stock');
+      const checked = row && row.querySelector('.stock-checked');
+      if (!row || !sku || !label) return;
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+      btn.classList.remove('is-fresh', 'is-error');
+      if (checked) checked.textContent = 'Checking';
+      try {
+        const res = await fetch(stockRefreshUrl(sku), { headers: { accept: 'application/json' } });
+        if (!res.ok) throw new Error('stock ' + res.status);
+        const next = refreshedStockLine(await res.json(), row.dataset.stockSize);
+        if (next) label.textContent = next;
+        btn.classList.add('is-fresh');
+        if (checked) checked.textContent = 'Updated ' + stockRefreshTime();
+      } catch (err) {
+        btn.classList.add('is-error');
+        if (checked) checked.textContent = 'Could not refresh';
+      } finally {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+      }
+    }
+    function refresh() {
+      const items = selected();
+      const cents = items.reduce(function(a, i) { return a + i.cents * i.qty; }, 0);
+      document.getElementById('cart-count').textContent = String(items.length);
+      document.getElementById('cart-total').textContent = fmtMoney(cents);
+      document.getElementById('cart-bar').classList.toggle('show', items.length > 0);
+    }
+    function buildHandoffText(items) {
+      const selectedItems = items || selected();
+      if (selectedItems.length === 0) return '';
+      const subtotal = selectedItems.reduce(function(a, i) { return a + i.cents * i.qty; }, 0);
+      const lines = selectedItems.map(function(i) {
+        const qtyPart = i.qty > 1 ? ' (x' + i.qty + ')' : '';
+        const skuPart = i.sku ? ' - SKU ' + i.sku : '';
+        return '- ' + i.name + ' - size ' + i.size + ' - ' + fmtMoney(i.cents) + qtyPart + skuPart;
+      });
+      return ['Buck Mason - ' + LOOKBOOK_TITLE + ' (' + LOOKBOOK_DATE + ')', '', 'I would like to order:'].concat(lines, ['', 'Subtotal at pick: ' + fmtMoney(subtotal), 'Please confirm shipping or pickup, any coupon or credit, and run checkout.']).join('\\n');
+    }
+    function resetCopyButton() {
+      const btn = document.getElementById('copy-btn');
+      if (!btn) return;
+      clearTimeout(copyResetTimer);
+      btn.disabled = false;
+      btn.textContent = btn.dataset.original || 'Copy to clipboard';
+    }
+    function showHandoff(text, title, intro) {
+      resetCopyButton();
+      document.getElementById('handoff-title').textContent = title || 'Tell your stylist';
+      document.getElementById('handoff-intro').textContent = intro || HANDOFF_INTRO;
+      document.getElementById('handoff-text').textContent = text;
+      document.getElementById('handoff').classList.add('show');
+    }
+    function openHandoff() { showHandoff(buildHandoffText(), 'Tell your stylist', HANDOFF_INTRO); }
+    function closeHandoff() { document.getElementById('handoff').classList.remove('show'); }
+    let copyResetTimer = null;
+    async function copyHandoff(btn) {
+      try {
+        await navigator.clipboard.writeText(document.getElementById('handoff-text').textContent);
+      } catch (e) {
+        const r = document.createRange(); r.selectNode(document.getElementById('handoff-text'));
+        getSelection().removeAllRanges(); getSelection().addRange(r);
+        document.execCommand('copy'); getSelection().removeAllRanges();
+      }
+      btn.dataset.original = btn.dataset.original || btn.textContent;
+      btn.textContent = 'Copied'; btn.disabled = true;
+      clearTimeout(copyResetTimer);
+      copyResetTimer = setTimeout(function() { btn.textContent = btn.dataset.original; btn.disabled = false; }, 1800);
+    }
+    function voteBucket(raw) {
+      const up = Number(raw && raw.up || 0);
+      const down = Number(raw && raw.down || 0);
+      const total = up + down;
+      return { up: up, down: down, total: total, net: up - down, likeRate: total ? up / total : null };
+    }
+    function bucketLabel(bucket) { return bucket.up + ' like / ' + bucket.down + ' pass'; }
+    function rankVoteRecommendations(manifest, tally, maxItems) {
+      const looks = Object.fromEntries((manifest.looks || []).map(function(look, index) {
+        return [look.id, Object.assign({}, look, { order: index, votes: voteBucket(tally && tally.looks && tally.looks[look.id]) })];
+      }));
+      const rankedLooks = Object.values(looks).sort(function(a, b) {
+        return (b.votes.net - a.votes.net) || (b.votes.up - a.votes.up) || ((b.votes.likeRate || 0) - (a.votes.likeRate || 0)) || (a.order - b.order);
+      });
+      const rankedItems = (manifest.items || []).map(function(item, index) {
+        const look = looks[item.look_id] || {};
+        const itemVotes = voteBucket(tally && tally.items && tally.items[item.sku]);
+        const lookVotes = look.votes || voteBucket();
+        const itemSignal = itemVotes.total >= 1 && itemVotes.net > 0;
+        const lookSignal = itemVotes.total === 0 && lookVotes.total >= 1 && lookVotes.net > 0;
+        const blockedByItemPass = itemVotes.total > 0 && itemVotes.net <= 0;
+        const recommended = (itemSignal || lookSignal) && !blockedByItemPass;
+        let score = itemVotes.net * 100 + itemVotes.up * 8 - itemVotes.down * 12 + (itemVotes.likeRate || 0) * 20 + lookVotes.net * 12 + lookVotes.up * 2 + (lookVotes.likeRate || 0) * 6;
+        if (lookSignal && !itemSignal) score -= 6;
+        return Object.assign({}, item, {
+          order: index,
+          votes: itemVotes,
+          lookVotes: lookVotes,
+          recommended: recommended,
+          reason: itemVotes.total ? bucketLabel(itemVotes) + ' on item; ' + bucketLabel(lookVotes) + ' on ' + (look.eyebrow || item.look_id) : 'no item votes; ' + bucketLabel(lookVotes) + ' on ' + (look.eyebrow || item.look_id),
+          score: score
+        });
+      }).sort(function(a, b) {
+        return Number(b.recommended) - Number(a.recommended) || b.score - a.score || b.votes.up - a.votes.up || b.lookVotes.up - a.lookVotes.up || a.order - b.order;
+      });
+      return { rankedLooks: rankedLooks, recommended: rankedItems.filter(function(item) { return item.recommended; }).slice(0, maxItems || 8) };
+    }
+    function buildTopVotedHandoffText(manifest, recommended, rankedLooks, tally) {
+      const voteCount = Number(tally && tally.count || 0);
+      const title = manifest.title || LOOKBOOK_TITLE;
+      const date = manifest.date || LOOKBOOK_DATE;
+      if (!recommended.length) {
+        return ['Buck Mason - ' + title + ' (' + date + ')', '', 'No positive top-voted picks yet.', 'Votes counted: ' + voteCount, 'Please choose items manually from the lookbook, or ask for more votes and try again.'].join('\\n');
+      }
+      const subtotal = recommended.reduce(function(sum, item) { return sum + Number(item.price_cents || 0) * Number(item.quantity || 1); }, 0);
+      const lines = recommended.map(function(item) {
+        const qty = Number(item.quantity || 1);
+        const qtyPart = qty > 1 ? ' (x' + qty + ')' : '';
+        const skuPart = item.sku ? ' - SKU ' + item.sku : '';
+        return '- ' + item.name + ' - size ' + item.size + ' - ' + fmtMoney(Number(item.price_cents || 0)) + qtyPart + skuPart;
+      });
+      const topLook = rankedLooks.find(function(look) { return look.votes.total > 0; });
+      const voteBasis = recommended.map(function(item) { return '- ' + item.name + ': ' + item.reason; });
+      return ['Buck Mason - ' + title + ' (' + date + ')', '', 'I would like to order the top-voted picks:'].concat(lines, ['', 'Subtotal at vote pick: ' + fmtMoney(subtotal), 'Votes counted: ' + voteCount, topLook ? 'Top look: ' + (topLook.eyebrow || topLook.id) + ' (' + bucketLabel(topLook.votes) + ').' : '', '', 'Vote basis:'], voteBasis, ['', 'Please re-check live stock and price, confirm shipping or pickup, any coupon or credit, and run checkout.']).filter(function(line, index, arr) { return line || arr[index - 1]; }).join('\\n');
+    }
+    async function openTopVotedHandoff(btn) {
+      const original = btn && btn.textContent;
+      if (btn) { btn.disabled = true; btn.textContent = 'Checking votes'; }
+      try {
+        const responses = await Promise.all([
+          fetch('lookbook.json', { headers: { accept: 'application/json' } }),
+          fetch('/api/votes?public=1&fresh=1', { headers: { accept: 'application/json' } })
+        ]);
+        if (!responses[0].ok) throw new Error('manifest ' + responses[0].status);
+        if (!responses[1].ok) throw new Error('votes ' + responses[1].status);
+        const manifestJson = await responses[0].json();
+        const votes = await responses[1].json();
+        const tally = votes.tally || votes;
+        const ranked = rankVoteRecommendations(manifestJson, tally, 8);
+        showHandoff(buildTopVotedHandoffText(manifestJson, ranked.recommended, ranked.rankedLooks, tally), 'Top-voted picks', WINNER_INTRO);
+      } catch (err) {
+        showHandoff(['Buck Mason - ' + LOOKBOOK_TITLE + ' (' + LOOKBOOK_DATE + ')', '', 'I could not load the live vote winners from this browser.', '', 'Please ask my stylist agent to rank the votes for ' + location.href + ' and order the top-voted picks.'].join('\\n'), 'Top-voted picks', WINNER_INTRO);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = original; }
+      }
+    }
+    document.addEventListener('change', function(e) {
+      if (e.target.matches('.piece input[type="checkbox"]')) { refresh(); refreshSelectButtons(); }
+    });
+    function lookCheckboxes(lookId) { return Array.from(document.querySelectorAll('.look[data-look="' + lookId + '"] .piece input[type="checkbox"]')); }
+    function allCheckboxes() { return Array.from(document.querySelectorAll('.piece input[type="checkbox"]')); }
+    function toggleLook(lookId, btn) {
+      const boxes = lookCheckboxes(lookId);
+      const allChecked = boxes.length > 0 && boxes.every(function(b) { return b.checked; });
+      boxes.forEach(function(b) { b.checked = !allChecked; });
+      refresh(); refreshSelectButtons();
+    }
+    function toggleAll(btn) {
+      const boxes = allCheckboxes();
+      const allChecked = boxes.length > 0 && boxes.every(function(b) { return b.checked; });
+      boxes.forEach(function(b) { b.checked = !allChecked; });
+      refresh(); refreshSelectButtons();
+    }
+    function refreshSelectButtons() {
+      document.querySelectorAll('.select-outfit').forEach(function(btn) {
+        const boxes = lookCheckboxes(btn.dataset.targetLook);
+        const allChecked = boxes.length > 0 && boxes.every(function(b) { return b.checked; });
+        btn.classList.toggle('selected', allChecked);
+        btn.textContent = allChecked ? 'Outfit selected' : 'Select this outfit';
+      });
+      const allBtn = document.getElementById('select-all-btn');
+      if (allBtn) {
+        const all = allCheckboxes();
+        const everySelected = all.length > 0 && all.every(function(b) { return b.checked; });
+        allBtn.classList.toggle('selected', everySelected);
+        allBtn.textContent = everySelected ? 'Deselect all' : 'Select all looks';
+      }
+    }
+    function openLightbox(src, alt) {
+      const lb = document.getElementById('lightbox');
+      const img = document.getElementById('lightbox-img');
+      img.src = src; img.alt = alt || '';
+      lb.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeLightbox(ev, force) {
+      if (!force && ev && ev.target && ev.target.id === 'lightbox-img') return;
+      document.getElementById('lightbox').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+    document.addEventListener('click', function(e) {
+      const img = e.target.closest('.look-hero img, .piece img');
+      if (img) {
+        e.preventDefault(); e.stopPropagation();
+        openLightbox(img.dataset.fullsize || img.src, img.alt);
+      }
+    }, true);
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(null, true); });
   </script>
 </body>
 </html>`
 }
 
 function renderLook(look: any, picks: any[]): string {
-  const pieces = picks.filter((pick) => String(pick.look || pick.look_id) === String(look.id))
+  const pieces = picks.filter((pick) => pickLookId(pick) === String(look.id))
+  if (!pieces.length) return ''
   const subtotal = pieces.reduce((sum, piece) => sum + Number(piece.price_cents || 0) * Number(piece.quantity || piece.qty || 1), 0)
+  const heroSrc = look.hero_image || ''
   return `<section class="look" data-look="${escapeHtml(look.id)}">
-  <div class="look-hero"><img src="${escapeHtml(look.hero_image || '')}" data-fullsize="${escapeHtml(look.hero_image || '')}" alt="${escapeHtml(look.title || look.id)}"></div>
-  <div>
-    <div class="eyebrow">${escapeHtml(look.eyebrow || look.id)}</div>
-    <h2>${escapeHtml(look.title || look.id)}</h2>
-    <p class="note">${escapeHtml(look.note || '')}</p>
-    <div class="pieces">${pieces.map(renderPiece).join('\n')}</div>
-    <div class="total">Look subtotal - ${money(subtotal)}</div>
-  </div>
-</section>`
+      <div class="look-hero">
+        <img src="${escapeHtml(heroSrc)}" data-fullsize="${escapeHtml(heroSrc)}" alt="Buck Mason lookbook - ${escapeHtml(look.title || look.id)}">
+      </div>
+      <div class="look-pieces">
+        <div class="eyebrow">${escapeHtml(look.eyebrow || look.id)}</div>
+        <h2>${escapeHtml(look.title || look.id)}</h2>
+        <p class="note">${escapeHtml(look.note || '')}</p>
+${pieces.map((piece, index) => renderPiece(piece, look.id, index)).join('\n')}
+        <div class="total">Look subtotal &middot; ${money(subtotal)}</div>
+        <button type="button" class="bm-btn-outline select-outfit" data-target-look="${escapeHtml(look.id)}" onclick="toggleLook(this.dataset.targetLook, this)">Select this outfit</button>
+      </div>
+    </section>`
 }
 
-function renderPiece(piece: any): string {
-  const image = imageUrl(piece)
+function renderPiece(piece: any, lookId: string, index: number): string {
+  const id = `cb-${lookId}-${index}`
   const priceCents = Number(piece.price_cents || 0)
   const quantity = Number(piece.quantity || piece.qty || 1)
-  return `<label class="piece">
-  <input type="checkbox" data-name="${escapeHtml(piece.name || '')}" data-size="${escapeHtml(piece.picked_size || piece.size || '')}" data-sku="${escapeHtml(piece.sku || '')}" data-qty="${quantity}" data-price-cents="${priceCents}">
-  <img src="${escapeHtml(image)}" data-fullsize="${escapeHtml(fullsizeUrl(piece))}" alt="${escapeHtml(piece.name || '')}">
-  <span>
-    <span class="piece-name">${escapeHtml(piece.name || '')}</span><br>
-    <span class="piece-meta">${escapeHtml(piece.color || '')} - size ${escapeHtml(piece.picked_size || piece.size || '')}</span><br>
-    <span>${money(priceCents)}</span><br>
-    <a href="${escapeHtml(piece.url || '#')}" target="_blank" rel="noopener">View on buckmason.com</a>
-  </span>
-</label>`
+  const size = piece.picked_size || piece.size || ''
+  const thumb = piece.thumb_path || sourceImageUrl(piece)
+  return `        <label class="piece" for="${escapeHtml(id)}">
+          <input type="checkbox" id="${escapeHtml(id)}"
+                 data-name="${escapeHtml(piece.name || '')}"
+                 data-size="${escapeHtml(size)}"
+                 data-sku="${escapeHtml(piece.sku || '')}"
+                 data-qty="${quantity}"
+                 data-price-cents="${priceCents}"
+                 data-url="${escapeHtml(piece.url || '')}">
+          <img src="${escapeHtml(thumb)}" data-fullsize="${escapeHtml(fullsizeUrl(piece))}" alt="${escapeHtml(piece.name || '')}">
+          <div class="piece-info">
+            <div class="name">${escapeHtml(piece.name || '')}</div>
+            <div class="price">${money(priceCents)}</div>
+            <a href="${escapeHtml(piece.url || '#')}" target="_blank" rel="noopener">View on buckmason.com</a>
+            ${stockRow(piece)}
+          </div>
+        </label>`
 }
 
-function imageUrl(piece: any): string {
+function stockRow(piece: any): string {
+  const sku = piece.sku || ''
+  const size = piece.picked_size || piece.size || ''
+  const disabled = sku ? '' : ' disabled'
+  return `<div class="stock-row" data-stock-sku="${escapeHtml(sku)}" data-stock-size="${escapeHtml(size)}">
+              <span class="stock">${escapeHtml(stockLine(piece))}</span>
+              <button type="button" class="stock-refresh" aria-label="Refresh stock for ${escapeHtml(piece.name || 'item')}" title="Refresh stock" onclick="refreshPieceStock(event, this)"${disabled}><span class="stock-refresh-icon" aria-hidden="true">&#8635;</span></button>
+              <span class="stock-checked" aria-live="polite"></span>
+            </div>`
+}
+
+function stockLine(piece: any): string {
+  const size = piece.picked_size || piece.size || ''
+  const label = stockLabelFor(piece) || '-'
+  return size ? `Size ${size} · ${label}` : label
+}
+
+function stockLabelFor(piece: any): string {
+  const stock = onlineStock(piece)
+  if (stock && typeof stock === 'object' && 'label' in stock) return String(stock.label || '')
+  return stock ? String(stock) : ''
+}
+
+function onlineStock(piece: any): any {
+  if (piece?.in_stock_online) return piece.in_stock_online
+  if (piece?.stock?.online) return piece.stock.online
+  return piece?.stock || {}
+}
+
+function stockRefreshConfig(config: any) {
+  const raw = config.stock_refresh || {}
+  return {
+    base_url: trimSlash(raw.base_url || 'https://pima.io/mcp/buckmason'),
+    near_zip: String(raw.near_zip || config.near_zip || '90291'),
+    radius_mi: Number(raw.radius_mi || config.radius_mi || 25),
+    cache_ttl_seconds: Number(raw.cache_ttl_seconds || 60),
+    preferred_location: raw.preferred_location || config.preferred_location || 'Abbot Kinney',
+  }
+}
+
+function pickLookId(piece: any): string {
+  return String(piece?.look || piece?.look_id || '')
+}
+
+function sourceImageUrl(piece: any): string {
   return piece?.try_on?.url || piece?.hero?.url || piece?.image_url || piece?.try_on_url || ''
 }
 
 function fullsizeUrl(piece: any): string {
   return piece?.hero?.url || piece?.try_on?.url || piece?.image_url || piece?.try_on_url || ''
+}
+
+function assetId(piece: any, index: number): string {
+  return String(piece.id || piece.product_id || piece.sku || index + 1).replace(/[^A-Za-z0-9._-]/g, '-')
+}
+
+async function writeJpegAsset(source: string, dest: string, maxWidth: number): Promise<void> {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'buckmason-asset-'))
+  const tempSource = path.join(tempDir, `source${sourceExt(source)}`)
+  try {
+    await writeSourceToFile(source, tempSource)
+    const converted = await convertWithSips(tempSource, dest, maxWidth)
+    if (!converted) await copyFile(tempSource, dest)
+  } finally {
+    await rm(tempDir, {recursive: true, force: true})
+  }
+}
+
+async function writeSourceToFile(source: string, dest: string): Promise<void> {
+  if (/^https?:\/\//.test(source)) {
+    const response = await fetch(source)
+    if (!response.ok) throw new Error(`failed to fetch image ${source}: ${response.status}`)
+    await writeFile(dest, Buffer.from(await response.arrayBuffer()))
+    return
+  }
+  if (source.startsWith('file://')) {
+    await copyFile(new URL(source), dest)
+    return
+  }
+  await copyFile(source, dest)
+}
+
+async function convertWithSips(source: string, dest: string, maxWidth: number): Promise<boolean> {
+  try {
+    await runCapture('sips', ['--resampleWidth', String(maxWidth), '--setProperty', 'format', 'jpeg', source, '--out', dest])
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function imageDimensions(file: string): Promise<{width: number; height: number} | null> {
+  try {
+    await access(file)
+    const output = await runCapture('sips', ['-g', 'pixelWidth', '-g', 'pixelHeight', file])
+    const width = Number(/pixelWidth:\s*(\d+)/.exec(output)?.[1])
+    const height = Number(/pixelHeight:\s*(\d+)/.exec(output)?.[1])
+    return width && height ? {width, height} : null
+  } catch {
+    return null
+  }
+}
+
+function runCapture(command: string, args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {stdio: ['ignore', 'pipe', 'pipe']})
+    let out = ''
+    let err = ''
+    child.stdout.on('data', (chunk) => { out += chunk })
+    child.stderr.on('data', (chunk) => { err += chunk })
+    child.on('error', reject)
+    child.on('close', (code) => code === 0 ? resolve(out) : reject(new Error(err || `${command} exited ${code}`)))
+  })
+}
+
+function sourceExt(source: string): string {
+  try {
+    const url = new URL(source)
+    return path.extname(url.pathname) || '.img'
+  } catch {
+    return path.extname(source) || '.img'
+  }
 }
 
 function normalizedPageUrl(value: string | undefined): string {
@@ -311,6 +801,14 @@ function money(cents: number): string {
 function requiredString(value: unknown, label: string): string {
   if (!value) throw new Error(`${label} is required`)
   return String(value)
+}
+
+function trimSlash(value: string): string {
+  return value.replace(/\/+$/, '')
+}
+
+function jsonForScript(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, '\\u003c')
 }
 
 function escapeHtml(value: unknown): string {
