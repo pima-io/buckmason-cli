@@ -5,6 +5,14 @@ vote-to-checkout handoffs.
 
 ## Commands
 
+- `buckmason lookbook trip --plan trip-plan.json --person <person> --generate-images --deploy --project <project>`
+  Runs the preferred destination/trip workflow from one plan file. It resolves
+  `~/.buckmason/people/<person>/profile.md` or `--profile`, fetches each
+  selected product from PIMA, writes config/picks/image-plan artifacts, enforces
+  complete top-plus-bottom looks before image generation, builds, validates,
+  deploys through Wrangler, and smoke-checks the public page, manifest, voting
+  endpoints, and OG image.
+
 - `buckmason lookbook settings --occasion travel --season summer --region "Los Angeles"`
   Fetches curated setting, composition, and prompt guidance from PIMA.
 
@@ -70,6 +78,11 @@ Hosting is also a publish action. Confirm before making a public URL unless the
 customer explicitly pre-authorized recurring deploys. If a host CLI exists but
 is unauthenticated, treat it as unavailable and fall through rather than starting
 login or account setup inside the lookbook flow.
+
+For travel briefs, prefer `lookbook trip` over hand-running the low-level
+pipeline. Drop reusable customer facts and reference-photo paths into a local
+person preset, keep the plan JSON to the trip, looks, product ids, and sizes,
+then let the command create the repeatable run directory.
 
 Premium try-on images are sensitive. Use at least two customer reference photos
 when possible, do not pass fully dressed reference photos that could anchor the

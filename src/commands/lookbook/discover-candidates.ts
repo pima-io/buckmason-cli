@@ -12,7 +12,7 @@ export default class LookbookDiscoverCandidates extends Command {
   static flags = {
     gender: Flags.string({required: true, options: ['m', 'w', 'u'], description: 'Customer gender/category preference'}),
     sizes: Flags.string({required: true, description: 'JSON file or inline JSON, for example {"shirt":"L","pant":"31"}'}),
-    wishlist: Flags.string({description: 'Wishlist JSONL path', default: path.join(os.homedir(), '.buck-mason-stylist/wishlist.jsonl')}),
+    wishlist: Flags.string({description: 'Wishlist JSONL path. Defaults to ~/.buckmason/wishlist.jsonl.', defaultHelp: '~/.buckmason/wishlist.jsonl'}),
     'since-days': Flags.integer({description: 'Recently-live window', default: 14}),
     max: Flags.integer({description: 'Maximum candidate count', default: 30}),
     'avoid-colors': Flags.string({description: 'Comma-separated color values to drop', default: 'vintage_product'}),
@@ -30,13 +30,17 @@ export default class LookbookDiscoverCandidates extends Command {
       company,
       gender: flags.gender as 'm' | 'w' | 'u',
       sinceDays: flags['since-days'],
-      wishlistPath: flags.wishlist,
+      wishlistPath: flags.wishlist || defaultWishlistPath(),
       sizes,
       max: flags.max,
       avoidColors: flags['avoid-colors'].split(',').map((value) => value.trim()).filter(Boolean),
     })
     this.log(printJson(data))
   }
+}
+
+function defaultWishlistPath(): string {
+  return path.join(os.homedir(), '.buckmason/wishlist.jsonl')
 }
 
 async function parseJsonInput(value: string): Promise<Record<string, string>> {

@@ -18,8 +18,8 @@ export default class LookbookRun extends Command {
     weekly: Flags.boolean({description: 'Weekly newsletter mode'}),
     event: Flags.string({description: 'Event JSON file'}),
     profile: Flags.string({required: true, description: 'Customer profile.md'}),
-    'runs-dir': Flags.string({description: 'Run directory root', default: path.join(os.homedir(), '.buck-mason-stylist/runs')}),
-    wishlist: Flags.string({description: 'Wishlist JSONL', default: path.join(os.homedir(), '.buck-mason-stylist/wishlist.jsonl')}),
+    'runs-dir': Flags.string({description: 'Run directory root. Defaults to ~/.buckmason/runs.', defaultHelp: '~/.buckmason/runs'}),
+    wishlist: Flags.string({description: 'Wishlist JSONL. Defaults to ~/.buckmason/wishlist.jsonl.', defaultHelp: '~/.buckmason/wishlist.jsonl'}),
     'max-pieces': Flags.integer({description: 'Maximum pieces to pick', default: 6}),
     tier: Flags.string({options: ['auto', 'editorial', 'premium'], default: 'auto', description: 'Lookbook tier'}),
     'resume-build': Flags.boolean({description: 'Resume after premium images have been generated'}),
@@ -38,7 +38,7 @@ export default class LookbookRun extends Command {
     const profile = parseProfile(await readFile(flags.profile, 'utf8'))
     const today = new Date().toISOString().slice(0, 10)
     const lookbookId = flags['lookbook-id'] || await deriveLookbookId(flags.weekly, flags.event, today)
-    const runDir = path.join(flags['runs-dir'], lookbookId)
+    const runDir = path.join(flags['runs-dir'] || defaultRunsDir(), lookbookId)
     const looksDir = path.join(runDir, 'looks')
     const deployDir = path.join(runDir, 'deploy')
     const picksPath = path.join(runDir, 'picks.json')
@@ -101,7 +101,7 @@ async function discoverAndPick({host, company, profile, flags}: any): Promise<an
     company,
     gender: (profile.gender as any) || 'u',
     sinceDays: flags.weekly ? 30 : 60,
-    wishlistPath: flags.wishlist,
+    wishlistPath: flags.wishlist || defaultWishlistPath(),
     sizes,
     max: Math.max(flags['max-pieces'] * 3, 18),
   })
@@ -112,6 +112,14 @@ async function discoverAndPick({host, company, profile, flags}: any): Promise<an
     look: index < half ? 'look1' : 'look2',
     picked_size: pick.size,
   }))
+}
+
+function defaultRunsDir(): string {
+  return path.join(os.homedir(), '.buckmason/runs')
+}
+
+function defaultWishlistPath(): string {
+  return path.join(os.homedir(), '.buckmason/wishlist.jsonl')
 }
 
 async function buildConfig({flags, lookbookId, today, picks}: any): Promise<Record<string, any>> {

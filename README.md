@@ -201,6 +201,7 @@ Examples:
 Lookbook workflows are exposed as TypeScript commands:
 
 ```bash
+buckmason lookbook trip --plan trip-plan.json --person john-collison --generate-images --deploy --project buckmason-john-spain-august
 buckmason lookbook profile --file profile.md
 buckmason lookbook settings --occasion travel --season summer --region "Los Angeles"
 buckmason lookbook score-event --file event.json
@@ -217,6 +218,15 @@ buckmason lookbook hosting
 buckmason lookbook hosting --intent permanent
 buckmason lookbook rank-votes --url https://example.pages.dev/
 ```
+
+Use `lookbook trip` for destination or customer-specific briefs. It reads a
+single JSON plan, resolves a reusable local person preset from
+`~/.buckmason/people/<person>/profile.md` or an explicit `--profile`, hydrates
+the selected product ids from PIMA with live stock, writes the config, picks,
+and image plan into `~/.buckmason/runs/<lookbook-id>/`, enforces complete
+top-plus-bottom looks before image generation, optionally generates premium
+try-on images, validates the HTML, deploys through Wrangler, and smoke-checks
+the public page, manifest, voting endpoints, and Open Graph image.
 
 Premium image generation is explicit. `lookbook run --tier premium` writes
 `image-plan.json` and exits with `READY_FOR_PREMIUM_IMAGE_STEP` until the agent

@@ -83,6 +83,7 @@ stock/price and get explicit checkout approval.
 
 ## Lookbook workflows
 
+- Streamlined trip flow: `buckmason lookbook trip --plan trip-plan.json --person <person> --generate-images --deploy --project <project>`
 - Fetch settings: `buckmason lookbook settings --occasion travel --season summer`
 - Score an event: `buckmason lookbook score-event --file event.json`
 - Build premium HTML: `buckmason lookbook build --config config.json --picks picks.json --look-images runs/<id>/looks --out out/lookbook`

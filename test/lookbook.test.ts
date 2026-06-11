@@ -10,6 +10,7 @@ import {prepareCloudflarePagesDeploy} from '../src/lookbook/deploy.ts'
 import {validateLookbookDir} from '../src/lookbook/validate.ts'
 import {parseProfile} from '../src/lookbook/profile.ts'
 import {buildLookbookImagePlan} from '../src/lookbook/image-generation.ts'
+import {buildTripArtifacts, buildTripConfig, buildTripPicks, smokeCheckLookbook, type TripPlan} from '../src/lookbook/trip.ts'
 
 test('scores formal travel events as premium', () => {
   const result = scoreEvent({
@@ -182,6 +183,113 @@ test('Cloudflare deploy prep injects optimized voting assets', async () => {
   assert.match(voteRoomWorker, /LOOKBOOK_VOTES\.list/)
   assert.doesNotMatch(tallyBlock, /LOOKBOOK_VOTES/)
   assert.match(wranglerToml, /script_name = "buckmason-test-lookbook-vote-room"/)
+})
+
+test('trip lookbook hydrates selected products and enforces complete looks', async () => {
+  const plan: TripPlan = {
+    person: 'john-collison',
+    destination: 'Spain',
+    month: '2026-08',
+    near_zip: '10003',
+    preferred_location: 'Hayes Valley',
+    looks: [{
+      title: 'Madrid Gallery Day',
+      products: [{id: 1, size: 'M'}, {id: 2, size: '32'}],
+    }],
+  }
+  const profile = {sizes: {shirt: 'M', pant: '32'}}
+  const products = new Map<string, any>([
+    ['1', {
+      id: 1,
+      name: 'Natural Stripe Shirt',
+      color: 'Natural Stripe',
+      category: 'Shirts',
+      price_cents: 16800,
+      price: '$168.00',
+      url: 'https://www.buckmason.com/products/shirt',
+      image_url: 'https://cdn.example.com/shirt.jpg',
+      images: [{url: 'https://cdn.example.com/shirt-flat.jpg', type: 'shopify', position: 1}],
+      variants: [{
+        sku: 'SHIRTM',
+        size: 'M',
+        shopify_variant_id: 'v1',
+        online: {in_stock: true, status: 'in_stock', label: 'In stock'},
+        fulfillment: {pickup_locations: [{name: 'Hayes Valley', short_name: 'HV'}]},
+      }],
+    }],
+    ['2', {
+      id: 2,
+      name: 'Linen Trouser',
+      color: 'Natural',
+      category: 'Pants',
+      price_cents: 19800,
+      price: '$198.00',
+      url: 'https://www.buckmason.com/products/trouser',
+      image_url: 'https://cdn.example.com/trouser.jpg',
+      images: [{url: 'https://cdn.example.com/trouser-flat.jpg', type: 'shopify', position: 1}],
+      variants: [{
+        sku: 'PANT32',
+        size: '32',
+        shopify_variant_id: 'v2',
+        online: {in_stock: true, status: 'low_stock', label: 'Low stock (3 left)'},
+        fulfillment: {pickup_locations: []},
+      }],
+    }],
+  ])
+  const client = {mcpGet: async (endpoint: string) => products.get(endpoint.split('/').pop() || '')} as any
+
+  const artifacts = buildTripArtifacts({plan, runsDir: '/tmp/runs'})
+  const config = buildTripConfig(plan, artifacts)
+  const picks = await buildTripPicks({client, plan, profile})
+
+  assert.equal(artifacts.lookbookId, '2026-08-john-collison')
+  assert.equal(config.lookbook_title, 'John Collison · Spain August 2026 Edit')
+  assert.deepEqual(picks.map((pick) => pick.sku), ['SHIRTM', 'PANT32'])
+  assert.equal(picks[0].in_stock_online.label, 'In stock online; pickup available at Hayes Valley for size M')
+})
+
+test('trip lookbook rejects incomplete looks before image generation', async () => {
+  const plan: TripPlan = {
+    destination: 'Spain',
+    month: '2026-08',
+    looks: [{title: 'Top Only', products: [{id: 1, size: 'M'}]}],
+  }
+  const client = {
+    mcpGet: async () => ({
+      id: 1,
+      name: 'Camp Shirt',
+      category: 'Shirts',
+      variants: [{sku: 'SHIRTM', size: 'M', online: {in_stock: true, status: 'in_stock', label: 'In stock'}}],
+    }),
+  } as any
+
+  await assert.rejects(
+    () => buildTripPicks({client, plan, profile: {sizes: {shirt: 'M'}}}),
+    /look1 is missing a bottom/,
+  )
+})
+
+test('trip smoke check verifies page, manifest, voting, live endpoint, and og image', async () => {
+  const fakeFetch = (async (input: URL | RequestInfo) => {
+    const url = new URL(String(input))
+    if (url.pathname === '/') return new Response('ok', {status: 200})
+    if (url.pathname === '/lookbook.json') {
+      return Response.json({schema: 'buck-mason-lookbook-manifest', title: 'Spain', tier: 'premium'})
+    }
+    if (url.pathname === '/api/votes') return Response.json({ok: true})
+    if (url.pathname === '/api/votes/live') return new Response('Expected WebSocket upgrade', {status: 426})
+    if (url.pathname === '/og.jpg') return new Response('jpeg', {status: 200, headers: {'content-type': 'image/jpeg'}})
+    return new Response('missing', {status: 404})
+  }) as typeof fetch
+
+  const result = await smokeCheckLookbook('https://example.pages.dev', fakeFetch)
+
+  assert.equal(result.ok, true)
+  assert.equal(result.page_status, 200)
+  assert.equal(result.manifest_title, 'Spain')
+  assert.equal(result.manifest_tier, 'premium')
+  assert.equal(result.live_status, 426)
+  assert.equal(result.og_content_type, 'image/jpeg')
 })
 
 test('Cloudflare deploy prep defaults to the LOOKBOOK_VOTES namespace', async () => {

@@ -644,74 +644,6 @@
         "preview.js"
       ]
     },
-    "locations:list": {
-      "aliases": [],
-      "args": {},
-      "description": "List Buck Mason stores and warehouses exposed to the MCP catalog.",
-      "flags": {
-        "near-zip": {
-          "description": "ZIP for distance sorting",
-          "name": "near-zip",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "radius": {
-          "description": "Radius in miles",
-          "name": "radius",
-          "default": 25,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "pickup": {
-          "description": "Only pickup-enabled locations",
-          "name": "pickup",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "output": {
-          "name": "output",
-          "default": "table",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "options": [
-            "table",
-            "json"
-          ],
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "locations:list",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "locations",
-        "list.js"
-      ]
-    },
     "lookbook:build": {
       "aliases": [],
       "args": {},
@@ -868,9 +800,8 @@
           "type": "option"
         },
         "wishlist": {
-          "description": "Wishlist JSONL path",
+          "description": "Wishlist JSONL path. Defaults to ~/.buckmason/wishlist.jsonl.",
           "name": "wishlist",
-          "default": "/Users/nickmerwin/.buck-mason-stylist/wishlist.jsonl",
           "hasDynamicHelp": false,
           "multiple": false,
           "type": "option"
@@ -1262,17 +1193,15 @@
           "type": "option"
         },
         "runs-dir": {
-          "description": "Run directory root",
+          "description": "Run directory root. Defaults to ~/.buckmason/runs.",
           "name": "runs-dir",
-          "default": "/Users/nickmerwin/.buck-mason-stylist/runs",
           "hasDynamicHelp": false,
           "multiple": false,
           "type": "option"
         },
         "wishlist": {
-          "description": "Wishlist JSONL",
+          "description": "Wishlist JSONL. Defaults to ~/.buckmason/wishlist.jsonl.",
           "name": "wishlist",
-          "default": "/Users/nickmerwin/.buck-mason-stylist/wishlist.jsonl",
           "hasDynamicHelp": false,
           "multiple": false,
           "type": "option"
@@ -1449,6 +1378,170 @@
         "settings.js"
       ]
     },
+    "lookbook:trip": {
+      "aliases": [],
+      "args": {},
+      "description": "Build a destination trip lookbook from a plan file, optional premium image generation, Wrangler deploy, and smoke checks.",
+      "flags": {
+        "plan": {
+          "description": "Trip plan JSON with destination, month, looks, and product ids",
+          "name": "plan",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "person": {
+          "description": "Person preset name under --people-dir, overriding plan.person",
+          "name": "person",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "profile": {
+          "description": "Profile markdown path, overriding plan.profile",
+          "name": "profile",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "people-dir": {
+          "description": "Directory containing <person>/profile.md presets. Defaults to ~/.buckmason/people.",
+          "name": "people-dir",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "runs-dir": {
+          "description": "Run directory root. Defaults to ~/.buckmason/runs.",
+          "name": "runs-dir",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "run-dir": {
+          "description": "Exact run directory. Overrides --runs-dir.",
+          "name": "run-dir",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "project": {
+          "description": "Cloudflare Pages project name. Defaults to plan.project or buckmason-<lookbook-id>.",
+          "name": "project",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "no-tryon": {
+          "description": "Build editorial product-image tier instead of premium generated try-on images",
+          "name": "no-tryon",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "generate-images": {
+          "description": "Call gpt-image-2 for missing premium look images",
+          "name": "generate-images",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "concurrency": {
+          "description": "Concurrent premium image edit calls; defaults to number of looks",
+          "name": "concurrency",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "api-key-env": {
+          "description": "Env var containing the OpenAI key",
+          "name": "api-key-env",
+          "default": "OPENAI_API_KEY",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "api-base": {
+          "description": "OpenAI API base URL",
+          "name": "api-base",
+          "default": "https://api.openai.com",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "deploy": {
+          "description": "Deploy to Cloudflare Pages with Wrangler after local validation",
+          "name": "deploy",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "dry-run": {
+          "description": "Prepare deploy files but do not publish to Cloudflare Pages",
+          "name": "dry-run",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "kv-id": {
+          "description": "Cloudflare KV namespace id for legacy LOOKBOOK_VOTES import",
+          "name": "kv-id",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "no-voting": {
+          "description": "Deploy read-only static lookbook without voting functions",
+          "name": "no-voting",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "no-overwrite": {
+          "description": "Refuse to deploy if the Pages project already has deployments",
+          "name": "no-overwrite",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "no-smoke": {
+          "description": "Skip post-deploy page, manifest, voting, and OG smoke checks",
+          "name": "no-smoke",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "json": {
+          "description": "Print JSON summary",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "lookbook:trip",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "lookbook",
+        "trip.js"
+      ]
+    },
     "lookbook:validate": {
       "aliases": [],
       "args": {},
@@ -1561,6 +1654,74 @@
         "commands",
         "lookbook",
         "verify-face.js"
+      ]
+    },
+    "locations:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List Buck Mason stores and warehouses exposed to the MCP catalog.",
+      "flags": {
+        "near-zip": {
+          "description": "ZIP for distance sorting",
+          "name": "near-zip",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "radius": {
+          "description": "Radius in miles",
+          "name": "radius",
+          "default": 25,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "pickup": {
+          "description": "Only pickup-enabled locations",
+          "name": "pickup",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "output": {
+          "name": "output",
+          "default": "table",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "table",
+            "json"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "locations:list",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "locations",
+        "list.js"
       ]
     },
     "orders:history": {
@@ -3161,5 +3322,5 @@
       ]
     }
   },
-  "version": "0.4.1"
+  "version": "0.5.0"
 }
