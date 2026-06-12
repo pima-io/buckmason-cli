@@ -163,11 +163,31 @@ recent Buck Mason catalog items and ranks them against the owned anchor item.
 ## Cart and MPP Checkout
 
 Use `cart build` when the customer wants a normal Shopify cart link. Use
-`checkout preview` / `checkout charge` only for fully agent-driven MPP checkout
-after reading the live total back and receiving approval through Stripe Link CLI
-(`link-cli`).
+`checkout mpp` for fully agent-driven MPP checkout after reading the live total
+back and receiving approval through Stripe Link CLI (`link-cli`). Use
+`checkout hosted` when the customer's agent cannot complete MPP payment
+directly; PIMA creates a short-lived branded checkout page with the cart,
+contact, delivery, coupon, and customer credit choices prefilled.
 
 MPP checkout flow:
+
+1. Find the customer-approved Link payment method with
+   `link-cli payment-methods list`.
+2. Read the live total back to the customer.
+3. Run `buckmason checkout mpp --confirm`; it previews the cart, creates a Link
+   shared-payment-token spend request, polls for approval, and submits the
+   one-time token to PIMA without printing it.
+
+```bash
+buckmason cart build --item 10543:L:1
+
+buckmason checkout mpp \
+  --body checkout.json \
+  --payment-method-id csmrpd_xxx \
+  --confirm
+```
+
+Low-level MPP debugging flow:
 
 1. Preview the checkout body with `buckmason checkout preview`.
 2. Read the live total back to the customer.
@@ -175,10 +195,21 @@ MPP checkout flow:
 4. Charge with `buckmason checkout charge`, passing that SPT via `--spt`.
 
 ```bash
-buckmason cart build --item 10543:L:1
-
 buckmason checkout preview --body checkout.json
 buckmason checkout charge --body checkout.json --acknowledged-total-cents 53200 --spt "$SPT" --confirm
+```
+
+Hosted checkout flow:
+
+1. Create the hosted checkout with the same checkout body and any preselected
+   shipping, pickup, coupon, or credit choices.
+2. Send the `hosted_checkout_url` to the customer.
+3. Poll the `checkout status` command until it is completed, canceled, expired,
+   or failed.
+
+```bash
+buckmason checkout hosted --body checkout.json --shipping-rate-code two-day
+buckmason checkout status <token> --watch
 ```
 
 SKUs follow the same ship/pickup rules as buckmason.com: `buckmason stock

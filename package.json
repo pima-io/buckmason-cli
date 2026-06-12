@@ -1,6 +1,6 @@
 {
   "name": "@buckmason/cli",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Customer-facing Buck Mason CLI for agents: catalog, stock, orders, returns, checkout handoffs, and lookbooks.",
   "bin": {
     "buckmason": "bin/run.js"
@@ -69,7 +69,7 @@
         "description": "Build Shopify cart permalinks"
       },
       "checkout": {
-        "description": "MPP checkout preview and charge"
+        "description": "MPP checkout preview, charge, and hosted handoff"
       },
       "orders": {
         "description": "Customer order history and tracking"

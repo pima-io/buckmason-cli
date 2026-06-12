@@ -1,8 +1,7 @@
 import {Command, Flags} from '@oclif/core'
 import {randomUUID} from 'node:crypto'
+import {buildCheckoutBody} from '../../lib/checkout.js'
 import {Client} from '../../lib/client.js'
-import {parseCheckoutLineItemSpec} from '../../lib/items.js'
-import {readJsonObject} from '../../lib/json-input.js'
 import {renderMppError} from '../../lib/mpp.js'
 import {printJson, renderKeyValues, renderRecords} from '../../lib/output.js'
 
@@ -17,6 +16,10 @@ export default class CheckoutPreview extends Command {
     coupon: Flags.string({description: 'Optional coupon code'}),
     credit: Flags.string({multiple: true, description: 'Customer credit code. Repeat for multiple codes.'}),
     'pickup-location-slug': Flags.string({description: 'Optional cart-level pickup location slug'}),
+    'pickup-location-id': Flags.integer({description: 'Optional cart-level pickup location id'}),
+    'shipping-rate-code': Flags.string({description: 'Optional shipping rate code'}),
+    'shipping-rate-id': Flags.integer({description: 'Optional shipping rate id'}),
+    'shipping-rate-name': Flags.string({description: 'Optional shipping rate name'}),
     'idempotency-key': Flags.string({description: 'Idempotency key'}),
     'dry-run': Flags.boolean({description: 'Pass dry_run=true to the checkout endpoint'}),
     host: Flags.string({description: 'PIMA host'}),
@@ -26,7 +29,9 @@ export default class CheckoutPreview extends Command {
 
   async run(): Promise<void> {
     const {flags} = await this.parse(CheckoutPreview)
-    const body = await buildCheckoutBody(flags)
+    const body = await buildCheckoutBody(flags, {
+      emptyMessage: 'Checkout preview needs --body with line_items or at least one --line-item.',
+    })
     const client = await Client.create({host: flags.host, companySlug: flags.company, token: null})
     const response = await client.mcpPostResponse<Record<string, any>>(
       '/checkout',
@@ -51,21 +56,6 @@ export default class CheckoutPreview extends Command {
     if (response.headers['www-authenticate']) this.log(`WWW-Authenticate: ${response.headers['www-authenticate']}`)
     renderCheckoutPreview(this, response.body)
   }
-}
-
-async function buildCheckoutBody(flags: Record<string, any>): Promise<Record<string, any>> {
-  const body = flags.body ? await readJsonObject(flags.body) : {}
-  if (flags['line-item']?.length) body.line_items = flags['line-item'].map(parseCheckoutLineItemSpec)
-  if (flags.buyer) body.buyer = await readJsonObject(flags.buyer)
-  if (flags.address) body.fulfillment_address = await readJsonObject(flags.address)
-  if (flags.coupon) body.coupon = flags.coupon
-  if (flags.credit?.length) body.customer_credit_codes = flags.credit
-  if (flags['pickup-location-slug']) body.pickup_location_slug = flags['pickup-location-slug']
-  if (!Array.isArray(body.line_items) || body.line_items.length === 0) {
-    throw new Error('Checkout preview needs --body with line_items or at least one --line-item.')
-  }
-
-  return body
 }
 
 function renderCheckoutPreview(command: Command, body: Record<string, any>): void {
