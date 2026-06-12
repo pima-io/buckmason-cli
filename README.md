@@ -92,6 +92,7 @@ buckmason returns locations --near-zip 90291
 buckmason returns show RMA123 --order-code BM123456
 buckmason returns postage RMA123 --order-code BM123456
 buckmason returns exchange-options 123 --order-code BM123456
+buckmason support contact
 ```
 
 Use customer-agent authorization only when the customer wants account-wide
@@ -125,6 +126,19 @@ buckmason returns start --email customer@example.com --items-file return-items.j
 
 `returns start` accepts repeatable `--item order_item_id:reason_id:return_type[:exchange_sku_id]`
 flags, or `--items-file` containing an RMS-shaped `items_attributes` array.
+
+## Customer Support
+
+Use `support contact` when the customer only needs the same public help
+channels shown on Buck Mason's FAQ/contact page. It prints the support email,
+text/phone number, FAQ/chat page, tracking and returns links, store lookup, gift
+card balance link, and policy notes. It does not send a message or create a
+ticket.
+
+```bash
+buckmason support contact
+buckmason support contact --json
+```
 
 ## Wardrobe Memory
 

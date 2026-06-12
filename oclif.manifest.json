@@ -2288,6 +2288,34 @@
         "check.js"
       ]
     },
+    "support:contact": {
+      "aliases": [],
+      "args": {},
+      "description": "Show Buck Mason customer-service contact info and self-service links from the public FAQ page.",
+      "flags": {
+        "json": {
+          "description": "Print support info as JSON",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "support:contact",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "support",
+        "contact.js"
+      ]
+    },
     "returns:address": {
       "aliases": [],
       "args": {},

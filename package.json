@@ -80,6 +80,9 @@
       "returns": {
         "description": "Return reasons, return status, and return creation"
       },
+      "support": {
+        "description": "Customer-service contact info and self-service links"
+      },
       "recommend": {
         "description": "Buck Mason capsule recommendations"
       },

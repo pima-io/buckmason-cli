@@ -1,6 +1,8 @@
 # Buck Mason Customer Service Skill
 
 Use this skill for order history, shipment tracking, and return starts.
+Use `buckmason support contact` when the customer only needs Buck Mason's
+public customer-service contact info, FAQ, or self-service links.
 
 ## Default path: order code
 
@@ -25,6 +27,7 @@ buckmason returns postage <return-id-or-code> --order-code <order-code>
 buckmason returns exchange-options <order-item-id> --order-code <order-code>
 buckmason returns start --order-code <order-code> --email <email> --item <order-item-id>:<reason-id>:original --confirm
 buckmason returns start --order-code <order-code> --email <email> --item <order-item-id>:<reason-id>:exchange:<sku-id> --confirm
+buckmason support contact
 ```
 
 ## Account-wide authorization
@@ -62,6 +65,11 @@ scoped Bearer token.
 - `buckmason returns start --item <order-item-id>:<reason-id>:exchange:<sku-id> ... --confirm`
   Creates an exchange return item using the SKU id selected from
   `returns exchange-options`.
+
+- `buckmason support contact`
+  Shows Buck Mason's public support email, text/phone number, FAQ/chat page,
+  self-service order links, and policy notes. This command does not contact
+  support or send customer information.
 
 RMS API commands use Buck Mason's built-in brand-public PIMA key. Use
 `BUCKMASON_PIMA_KEY` or `--key` only to override it for staging or another

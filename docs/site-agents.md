@@ -53,6 +53,7 @@ buckmason stock check <SKU> --near-zip 90291
 buckmason locations list --near-zip 90291 --pickup
 buckmason recommend --gender m --occasion travel --dress-code smart_casual
 buckmason cart build --item <product-id>:<size>:<qty>   # returns a checkout URL
+buckmason support contact                               # public support info and self-service links
 ```
 
 ### Single-order tracking and returns (order code, no token)
@@ -116,6 +117,12 @@ Base: `https://pima.io/mcp/buckmason`
 | GET | `/locations?near_zip=&pickup=` | Stores and pickup locations |
 | GET | `/recommend?gender=&occasion=&dress_code=` | Capsule recommendations |
 | POST | `/cart` | Build a validated cart → returns `checkout_url` |
+
+For support questions that do not need account data, use the public FAQ/contact
+surface: `buckmason support contact`, or visit
+`https://www.buckmason.com/pages/faq`. It lists Buck Mason's customer-service
+email, text/phone number, FAQ/chat page, order tracking, returns/exchanges,
+store lookup, and gift-card balance links.
 
 ### Orders and returns (order code + brand-public key)
 
