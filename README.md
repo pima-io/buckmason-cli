@@ -162,8 +162,7 @@ recent Buck Mason catalog items and ranks them against the owned anchor item.
 
 ## Cart and MPP Checkout
 
-Use `cart build` when the customer wants a normal Shopify cart link. Use
-`checkout mpp` for fully agent-driven MPP checkout after reading the live total
+Use `checkout mpp` for fully agent-driven MPP checkout after reading the live total
 back and receiving approval through Stripe Link CLI (`link-cli`). Use
 `checkout hosted` when the customer's agent cannot complete MPP payment
 directly; PIMA creates a short-lived branded checkout page with the cart,
