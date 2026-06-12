@@ -119,6 +119,138 @@
         "recommend.js"
       ]
     },
+    "cart:build": {
+      "aliases": [],
+      "args": {},
+      "description": "Build a stateless Buck Mason Shopify cart permalink from products and sizes.",
+      "flags": {
+        "item": {
+          "char": "i",
+          "description": "Cart item as product-id-or-code:size[:qty]. Repeat for multiple items.",
+          "name": "item",
+          "required": true,
+          "hasDynamicHelp": false,
+          "multiple": true,
+          "type": "option"
+        },
+        "coupon": {
+          "description": "Optional coupon code",
+          "name": "coupon",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "pickup-location-slug": {
+          "description": "Optional pickup location slug",
+          "name": "pickup-location-slug",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "pickup-location-id": {
+          "description": "Optional pickup location id",
+          "name": "pickup-location-id",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "allow-pickup-partial": {
+          "description": "Allow cart even when not every item is available for pickup",
+          "name": "allow-pickup-partial",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "json": {
+          "description": "Print full JSON",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "cart:build",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "cart",
+        "build.js"
+      ]
+    },
+    "categories:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List Buck Mason category taxonomy from the public PIMA MCP API.",
+      "flags": {
+        "gender": {
+          "description": "m, w, or u",
+          "name": "gender",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "output": {
+          "name": "output",
+          "default": "table",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "table",
+            "json"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "categories:list",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "categories",
+        "list.js"
+      ]
+    },
     "auth:login": {
       "aliases": [],
       "args": {},
@@ -265,138 +397,6 @@
         "commands",
         "auth",
         "status.js"
-      ]
-    },
-    "cart:build": {
-      "aliases": [],
-      "args": {},
-      "description": "Build a stateless Buck Mason Shopify cart permalink from products and sizes.",
-      "flags": {
-        "item": {
-          "char": "i",
-          "description": "Cart item as product-id-or-code:size[:qty]. Repeat for multiple items.",
-          "name": "item",
-          "required": true,
-          "hasDynamicHelp": false,
-          "multiple": true,
-          "type": "option"
-        },
-        "coupon": {
-          "description": "Optional coupon code",
-          "name": "coupon",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "pickup-location-slug": {
-          "description": "Optional pickup location slug",
-          "name": "pickup-location-slug",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "pickup-location-id": {
-          "description": "Optional pickup location id",
-          "name": "pickup-location-id",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "allow-pickup-partial": {
-          "description": "Allow cart even when not every item is available for pickup",
-          "name": "allow-pickup-partial",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "json": {
-          "description": "Print full JSON",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "cart:build",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "cart",
-        "build.js"
-      ]
-    },
-    "categories:list": {
-      "aliases": [],
-      "args": {},
-      "description": "List Buck Mason category taxonomy from the public PIMA MCP API.",
-      "flags": {
-        "gender": {
-          "description": "m, w, or u",
-          "name": "gender",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "output": {
-          "name": "output",
-          "default": "table",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "options": [
-            "table",
-            "json"
-          ],
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "categories:list",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "categories",
-        "list.js"
       ]
     },
     "checkout:charge": {
@@ -1111,74 +1111,6 @@
         "commands",
         "checkout",
         "status.js"
-      ]
-    },
-    "locations:list": {
-      "aliases": [],
-      "args": {},
-      "description": "List Buck Mason stores and warehouses exposed to the MCP catalog.",
-      "flags": {
-        "near-zip": {
-          "description": "ZIP for distance sorting",
-          "name": "near-zip",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "radius": {
-          "description": "Radius in miles",
-          "name": "radius",
-          "default": 25,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "pickup": {
-          "description": "Only pickup-enabled locations",
-          "name": "pickup",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "output": {
-          "name": "output",
-          "default": "table",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "options": [
-            "table",
-            "json"
-          ],
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "locations:list",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "locations",
-        "list.js"
       ]
     },
     "lookbook:build": {
@@ -2193,6 +2125,74 @@
         "verify-face.js"
       ]
     },
+    "locations:list": {
+      "aliases": [],
+      "args": {},
+      "description": "List Buck Mason stores and warehouses exposed to the MCP catalog.",
+      "flags": {
+        "near-zip": {
+          "description": "ZIP for distance sorting",
+          "name": "near-zip",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "radius": {
+          "description": "Radius in miles",
+          "name": "radius",
+          "default": 25,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "pickup": {
+          "description": "Only pickup-enabled locations",
+          "name": "pickup",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "output": {
+          "name": "output",
+          "default": "table",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "table",
+            "json"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "locations:list",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "locations",
+        "list.js"
+      ]
+    },
     "orders:history": {
       "aliases": [],
       "args": {},
@@ -2381,380 +2381,6 @@
         "commands",
         "orders",
         "track.js"
-      ]
-    },
-    "products:imagery": {
-      "aliases": [],
-      "args": {
-        "id": {
-          "description": "Numeric product id, slug, or product code",
-          "name": "id",
-          "required": true
-        }
-      },
-      "description": "Show product imagery roles for lookbook and try-on pipelines.",
-      "flags": {
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "json": {
-          "description": "Print full JSON",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "products:imagery",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "products",
-        "imagery.js"
-      ]
-    },
-    "products:search": {
-      "aliases": [],
-      "args": {},
-      "description": "Search Buck Mason products through the public PIMA MCP catalog.",
-      "flags": {
-        "q": {
-          "description": "Search term",
-          "name": "q",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "gender": {
-          "description": "m, w, or u",
-          "name": "gender",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "color": {
-          "description": "Exact color name",
-          "name": "color",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "category": {
-          "description": "Category name or id",
-          "name": "category",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "near-zip": {
-          "description": "ZIP for nearby stock signal",
-          "name": "near-zip",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "in-stock-only": {
-          "description": "Only include products with online stock signal",
-          "name": "in-stock-only",
-          "allowNo": false,
-          "type": "boolean"
-        },
-        "sort": {
-          "description": "Sort products by name or newest live signal",
-          "name": "sort",
-          "default": "name",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "options": [
-            "name",
-            "newest"
-          ],
-          "type": "option"
-        },
-        "days": {
-          "description": "Recently-live window in days when --sort newest is used",
-          "name": "days",
-          "default": 90,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "limit": {
-          "description": "Results per page",
-          "name": "limit",
-          "default": 10,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "page": {
-          "description": "Page number",
-          "name": "page",
-          "default": 1,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "output": {
-          "name": "output",
-          "default": "table",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "options": [
-            "table",
-            "json"
-          ],
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "products:search",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "products",
-        "search.js"
-      ]
-    },
-    "products:seasonal": {
-      "aliases": [],
-      "args": {},
-      "description": "List recently-live products as the current season signal.",
-      "flags": {
-        "gender": {
-          "description": "m, w, or u",
-          "name": "gender",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "category": {
-          "description": "Category name or id",
-          "name": "category",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "days": {
-          "description": "Recently-live window in days",
-          "name": "days",
-          "default": 30,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "limit": {
-          "description": "Maximum products",
-          "name": "limit",
-          "default": 24,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "output": {
-          "name": "output",
-          "default": "table",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "options": [
-            "table",
-            "json"
-          ],
-          "type": "option"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "products:seasonal",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "products",
-        "seasonal.js"
-      ]
-    },
-    "products:show": {
-      "aliases": [],
-      "args": {
-        "id": {
-          "description": "Numeric product id or product code",
-          "name": "id",
-          "required": true
-        }
-      },
-      "description": "Show Buck Mason product detail, variants, imagery, and nearby stock.",
-      "flags": {
-        "near-zip": {
-          "description": "ZIP for nearby stock",
-          "name": "near-zip",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "radius": {
-          "description": "Radius in miles",
-          "name": "radius",
-          "default": 25,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "json": {
-          "description": "Print full JSON",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "products:show",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "products",
-        "show.js"
-      ]
-    },
-    "stock:check": {
-      "aliases": [],
-      "args": {
-        "sku": {
-          "name": "sku",
-          "required": true
-        }
-      },
-      "description": "Check online and nearby-store stock for a SKU, including the ship/pickup fulfillment gate.",
-      "flags": {
-        "near-zip": {
-          "description": "ZIP for nearby stores",
-          "name": "near-zip",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "radius": {
-          "description": "Radius in miles",
-          "name": "radius",
-          "default": 25,
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "host": {
-          "description": "PIMA host",
-          "name": "host",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "company": {
-          "description": "PIMA company slug",
-          "name": "company",
-          "hasDynamicHelp": false,
-          "multiple": false,
-          "type": "option"
-        },
-        "json": {
-          "description": "Print JSON",
-          "name": "json",
-          "allowNo": false,
-          "type": "boolean"
-        }
-      },
-      "hasDynamicHelp": false,
-      "hiddenAliases": [],
-      "id": "stock:check",
-      "pluginAlias": "@buckmason/cli",
-      "pluginName": "@buckmason/cli",
-      "pluginType": "core",
-      "strict": true,
-      "enableJsonFlag": false,
-      "isESM": true,
-      "relativePath": [
-        "dist",
-        "commands",
-        "stock",
-        "check.js"
       ]
     },
     "returns:address": {
@@ -3413,13 +3039,47 @@
         "start.js"
       ]
     },
-    "support:contact": {
+    "stock:check": {
       "aliases": [],
-      "args": {},
-      "description": "Show Buck Mason customer-service contact info and self-service links from the public FAQ page.",
+      "args": {
+        "sku": {
+          "name": "sku",
+          "required": true
+        }
+      },
+      "description": "Check online and nearby-store stock for a SKU, including the ship/pickup fulfillment gate.",
       "flags": {
+        "near-zip": {
+          "description": "ZIP for nearby stores",
+          "name": "near-zip",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "radius": {
+          "description": "Radius in miles",
+          "name": "radius",
+          "default": 25,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
         "json": {
-          "description": "Print support info as JSON",
+          "description": "Print JSON",
           "name": "json",
           "allowNo": false,
           "type": "boolean"
@@ -3427,7 +3087,7 @@
       },
       "hasDynamicHelp": false,
       "hiddenAliases": [],
-      "id": "support:contact",
+      "id": "stock:check",
       "pluginAlias": "@buckmason/cli",
       "pluginName": "@buckmason/cli",
       "pluginType": "core",
@@ -3437,8 +3097,320 @@
       "relativePath": [
         "dist",
         "commands",
-        "support",
-        "contact.js"
+        "stock",
+        "check.js"
+      ]
+    },
+    "products:imagery": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Numeric product id, slug, or product code",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Show product imagery roles for lookbook and try-on pipelines.",
+      "flags": {
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "json": {
+          "description": "Print full JSON",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "products:imagery",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "products",
+        "imagery.js"
+      ]
+    },
+    "products:search": {
+      "aliases": [],
+      "args": {},
+      "description": "Search Buck Mason products through the public PIMA MCP catalog.",
+      "flags": {
+        "q": {
+          "description": "Search term",
+          "name": "q",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "gender": {
+          "description": "m, w, or u",
+          "name": "gender",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "color": {
+          "description": "Exact color name",
+          "name": "color",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "category": {
+          "description": "Category name or id",
+          "name": "category",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "near-zip": {
+          "description": "ZIP for nearby stock signal",
+          "name": "near-zip",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "in-stock-only": {
+          "description": "Only include products with online stock signal",
+          "name": "in-stock-only",
+          "allowNo": false,
+          "type": "boolean"
+        },
+        "sort": {
+          "description": "Sort products by name or newest live signal",
+          "name": "sort",
+          "default": "name",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "name",
+            "newest"
+          ],
+          "type": "option"
+        },
+        "days": {
+          "description": "Recently-live window in days when --sort newest is used",
+          "name": "days",
+          "default": 90,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "limit": {
+          "description": "Results per page",
+          "name": "limit",
+          "default": 10,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "page": {
+          "description": "Page number",
+          "name": "page",
+          "default": 1,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "output": {
+          "name": "output",
+          "default": "table",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "table",
+            "json"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "products:search",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "products",
+        "search.js"
+      ]
+    },
+    "products:seasonal": {
+      "aliases": [],
+      "args": {},
+      "description": "List recently-live products as the current season signal.",
+      "flags": {
+        "gender": {
+          "description": "m, w, or u",
+          "name": "gender",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "category": {
+          "description": "Category name or id",
+          "name": "category",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "days": {
+          "description": "Recently-live window in days",
+          "name": "days",
+          "default": 30,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "limit": {
+          "description": "Maximum products",
+          "name": "limit",
+          "default": 24,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "output": {
+          "name": "output",
+          "default": "table",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "options": [
+            "table",
+            "json"
+          ],
+          "type": "option"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "products:seasonal",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "products",
+        "seasonal.js"
+      ]
+    },
+    "products:show": {
+      "aliases": [],
+      "args": {
+        "id": {
+          "description": "Numeric product id or product code",
+          "name": "id",
+          "required": true
+        }
+      },
+      "description": "Show Buck Mason product detail, variants, imagery, and nearby stock.",
+      "flags": {
+        "near-zip": {
+          "description": "ZIP for nearby stock",
+          "name": "near-zip",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "radius": {
+          "description": "Radius in miles",
+          "name": "radius",
+          "default": 25,
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "host": {
+          "description": "PIMA host",
+          "name": "host",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "company": {
+          "description": "PIMA company slug",
+          "name": "company",
+          "hasDynamicHelp": false,
+          "multiple": false,
+          "type": "option"
+        },
+        "json": {
+          "description": "Print full JSON",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "products:show",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "products",
+        "show.js"
       ]
     },
     "wardrobe:list": {
@@ -3816,6 +3788,34 @@
         "commands",
         "wardrobe",
         "sync.js"
+      ]
+    },
+    "support:contact": {
+      "aliases": [],
+      "args": {},
+      "description": "Show Buck Mason customer-service contact info and self-service links from the public FAQ page.",
+      "flags": {
+        "json": {
+          "description": "Print support info as JSON",
+          "name": "json",
+          "allowNo": false,
+          "type": "boolean"
+        }
+      },
+      "hasDynamicHelp": false,
+      "hiddenAliases": [],
+      "id": "support:contact",
+      "pluginAlias": "@buckmason/cli",
+      "pluginName": "@buckmason/cli",
+      "pluginType": "core",
+      "strict": true,
+      "enableJsonFlag": false,
+      "isESM": true,
+      "relativePath": [
+        "dist",
+        "commands",
+        "support",
+        "contact.js"
       ]
     }
   },
