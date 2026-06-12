@@ -185,6 +185,9 @@ buckmason checkout mpp \
   --body checkout.json \
   --payment-method-id csmrpd_xxx \
   --confirm
+
+# Fallback when Link CLI payment is unavailable:
+buckmason checkout mpp --body checkout.json --hosted
 ```
 
 Low-level MPP debugging flow:
@@ -211,6 +214,10 @@ Hosted checkout flow:
 buckmason checkout hosted --body checkout.json --shipping-rate-code two-day
 buckmason checkout status <token> --watch
 ```
+
+`checkout mpp --hosted` is a shorthand for the same handoff path: it uses the
+MPP checkout body shape, creates the branded hosted checkout, and prints the
+poll command the agent should run while the customer approves or cancels.
 
 SKUs follow the same ship/pickup rules as buckmason.com: `buckmason stock
 check <sku>` reports `fulfillment.mode` (`ship_or_pickup`, `ship_only`,

@@ -2,8 +2,10 @@ import {Command, Flags} from '@oclif/core'
 import {execFile} from 'node:child_process'
 import {randomUUID} from 'node:crypto'
 import {promisify} from 'node:util'
+import open from 'open'
 import {buildCheckoutBody} from '../../lib/checkout.js'
 import {Client} from '../../lib/client.js'
+import {createHostedCheckout, renderHostedCheckoutResponse} from '../../lib/hosted-checkout.js'
 import {
   buildLinkSpendRequestInput,
   extractSharedPaymentToken,
@@ -29,7 +31,9 @@ export default class CheckoutMpp extends Command {
     'shipping-rate-code': Flags.string({description: 'Optional shipping rate code'}),
     'shipping-rate-id': Flags.integer({description: 'Optional shipping rate id'}),
     'shipping-rate-name': Flags.string({description: 'Optional shipping rate name'}),
-    'payment-method-id': Flags.string({required: true, description: 'Link payment method ID from `link-cli payment-methods list`'}),
+    hosted: Flags.boolean({description: 'Create a hosted checkout URL instead of using Stripe Link CLI'}),
+    open: Flags.boolean({description: 'Open the hosted checkout URL when using --hosted'}),
+    'payment-method-id': Flags.string({description: 'Link payment method ID from `link-cli payment-methods list`'}),
     'link-cli': Flags.string({description: 'Link CLI executable', default: 'link-cli'}),
     'approval-interval': Flags.integer({description: 'Seconds between Link approval polls', default: 2}),
     'approval-max-attempts': Flags.integer({description: 'Maximum Link approval poll attempts', default: 150}),
@@ -46,15 +50,37 @@ export default class CheckoutMpp extends Command {
 
   async run(): Promise<void> {
     const {flags} = await this.parse(CheckoutMpp)
-    if (!flags.confirm) {
-      throw new Error('Refusing to request Link approval without --confirm. Preview the cart and read the total back to the customer first.')
-    }
-
     const body = await buildCheckoutBody(flags, {
       emptyMessage: 'MPP checkout needs --body with line_items or at least one --line-item.',
     })
     const idempotencyKey = flags['idempotency-key'] || randomUUID()
     const client = await Client.create({host: flags.host, companySlug: flags.company, token: null})
+
+    if (flags.hosted) {
+      const hosted = await createHostedCheckout(client, body, {
+        agentIdentity: flags['agent-identity'],
+        agentModel: flags['agent-model'],
+        idempotencyKey,
+      })
+      if (flags.open && hosted.body.hosted_checkout_url) await open(hosted.body.hosted_checkout_url)
+      if (flags.json) {
+        this.log(printJson({status: hosted.status, headers: hosted.headers, body: hosted.body}))
+        if (hosted.status >= 400) this.exit(1)
+        return
+      }
+
+      if (renderMppError((message) => this.log(message), hosted.body)) this.exit(1)
+      this.log(renderHostedCheckoutResponse(hosted.body))
+      return
+    }
+
+    if (!flags['payment-method-id']) {
+      throw new Error('Missing required flag --payment-method-id. Use --hosted when Stripe Link CLI payment is unavailable.')
+    }
+
+    if (!flags.confirm) {
+      throw new Error('Refusing to request Link approval without --confirm. Preview the cart and read the total back to the customer first.')
+    }
 
     const preview = await client.mcpPostResponse<Record<string, any>>(
       '/checkout',

@@ -1,6 +1,7 @@
 export * from './lib/auth.js'
 export * from './lib/checkout.js'
 export * from './lib/client.js'
+export * from './lib/hosted-checkout.js'
 export * from './lib/items.js'
 export * from './lib/mpp-checkout.js'
 export * from './lib/orders.js'

@@ -1,9 +1,10 @@
 import {Command, Flags} from '@oclif/core'
-import {randomUUID} from 'node:crypto'
 import open from 'open'
 import {buildCheckoutBody} from '../../lib/checkout.js'
 import {Client} from '../../lib/client.js'
-import {printJson, renderKeyValues, renderRecords} from '../../lib/output.js'
+import {createHostedCheckout, renderHostedCheckoutResponse} from '../../lib/hosted-checkout.js'
+import {renderMppError} from '../../lib/mpp.js'
+import {printJson} from '../../lib/output.js'
 
 export default class CheckoutHosted extends Command {
   static description = 'Create a PIMA-hosted checkout page when MPP Link CLI payment is unavailable.'
@@ -35,41 +36,22 @@ export default class CheckoutHosted extends Command {
       emptyMessage: 'Hosted checkout needs --body with line_items or at least one --line-item.',
     })
     const client = await Client.create({host: flags.host, companySlug: flags.company, token: null})
-    const response = await client.mcpPostResponse<Record<string, any>>(
-      '/hosted_checkout',
-      body,
-      {},
-      {
-        headers: {
-          'Idempotency-Key': flags['idempotency-key'] || randomUUID(),
-          'X-Agent-Identity': flags['agent-identity'],
-          'X-Agent-Model': flags['agent-model'],
-        },
-      },
-    )
-    const checkout = response.body.checkout || {}
+    const response = await createHostedCheckout(client, body, {
+      agentIdentity: flags['agent-identity'],
+      agentModel: flags['agent-model'],
+      idempotencyKey: flags['idempotency-key'],
+    })
 
     if (flags.open && response.body.hosted_checkout_url) await open(response.body.hosted_checkout_url)
 
     if (flags.json) {
       this.log(printJson({status: response.status, headers: response.headers, body: response.body}))
+      if (response.status >= 400) this.exit(1)
       return
     }
 
-    this.log(renderKeyValues({
-      hosted_checkout_url: response.body.hosted_checkout_url,
-      hosted_checkout_status_url: response.body.hosted_checkout_status_url,
-      token: checkout.token,
-      expires_at: response.body.expires_at,
-      poll_after_seconds: response.body.poll_after_seconds,
-      subtotal: checkout.totals?.subtotal,
-      discount: checkout.totals?.discount,
-      shipping: checkout.totals?.shipping,
-      tax: checkout.totals?.tax,
-      credit_applied: checkout.totals?.credit_applied,
-      charge: checkout.totals?.charge,
-    }, 'table'))
-    this.log(renderRecords(checkout.line_items || [], ['sku', 'quantity', 'unit_price', 'pickup_location_name', 'to_pickup'], 'table'))
-    if (checkout.token) this.log(`Poll: buckmason checkout status ${checkout.token} --watch`)
+    if (renderMppError((message) => this.log(message), response.body)) this.exit(1)
+
+    this.log(renderHostedCheckoutResponse(response.body))
   }
 }
