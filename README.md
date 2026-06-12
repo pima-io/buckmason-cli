@@ -260,6 +260,8 @@ buckmason lookbook discover-candidates --gender m --sizes '{"shirt":"L","pant":"
 buckmason lookbook run --weekly --profile profile.md
 buckmason lookbook image-plan --config lookbook-config.json --picks picks.json --profile profile.md --out image-plan.json
 buckmason lookbook generate-images --plan image-plan.json --out runs/<lookbook-id>/looks
+buckmason lookbook recheck --run-dir ~/.buckmason/runs/<lookbook-id>
+buckmason lookbook recheck --run-dir ~/.buckmason/runs/<lookbook-id> --fix
 buckmason lookbook verify-face --generated runs/<lookbook-id>/looks/look1.png --reference /path/portrait.jpg --reference /path/body.jpg
 buckmason lookbook build --config lookbook-config.json --picks picks.json --look-images runs/<lookbook-id>/looks --out dist/lookbook
 buckmason lookbook build --config lookbook-config.json --picks picks.json --no-tryon --out dist/lookbook
@@ -276,8 +278,12 @@ single JSON plan, resolves a reusable local person preset from
 the selected product ids from PIMA with live stock, writes the config, picks,
 and image plan into `~/.buckmason/runs/<lookbook-id>/`, enforces complete
 top-plus-bottom looks before image generation, optionally generates premium
-try-on images, validates the HTML, deploys through Wrangler, and smoke-checks
-the public page, manifest, voting endpoints, and Open Graph image.
+try-on images, can visually recheck every generated outfit against the selected
+product references with `--recheck`, validates the HTML, deploys through
+Wrangler, and smoke-checks the public page, manifest, voting endpoints, and Open
+Graph image. Use `--recheck-fix` to regenerate only failed looks before deploy;
+this is designed to catch wrong-color or wrong-category products such as dark
+jeans rendered for a pale denim pick.
 
 Premium image generation is explicit. `lookbook run --tier premium` writes
 `image-plan.json` and exits with `READY_FOR_PREMIUM_IMAGE_STEP` until the agent

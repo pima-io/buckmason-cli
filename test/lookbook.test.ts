@@ -10,6 +10,16 @@ import {prepareCloudflarePagesDeploy} from '../src/lookbook/deploy.ts'
 import {validateLookbookDir} from '../src/lookbook/validate.ts'
 import {parseProfile} from '../src/lookbook/profile.ts'
 import {buildLookbookImagePlan} from '../src/lookbook/image-generation.ts'
+import {
+  buildLookRecheckPrompt,
+  buildOutfitRecheckReport,
+  failedLookIds,
+  filterImagePlanLooks,
+  imagePlanWithRecheckAddenda,
+  normalizeOutfitRecheckResponse,
+  renderOutfitRecheckSummary,
+  type OutfitRecheckLookInput,
+} from '../src/lookbook/recheck.ts'
 import {buildTripArtifacts, buildTripConfig, buildTripPicks, smokeCheckLookbook, type TripPlan} from '../src/lookbook/trip.ts'
 
 test('scores formal travel events as premium', () => {
@@ -195,6 +205,9 @@ test('trip lookbook hydrates selected products and enforces complete looks', asy
     looks: [{
       title: 'Madrid Gallery Day',
       products: [{id: 1, size: 'M'}, {id: 2, size: '32'}],
+    }, {
+      title: 'Fogline Sweater Day',
+      products: [{id: 3, size: 'M'}, {id: 4, size: '32'}],
     }],
   }
   const profile = {sizes: {shirt: 'M', pant: '32'}}
@@ -235,6 +248,44 @@ test('trip lookbook hydrates selected products and enforces complete looks', asy
         fulfillment: {pickup_locations: []},
       }],
     }],
+    ['3', {
+      id: 3,
+      name: 'Brown Anatomica Mock Neck Sweater',
+      color: 'Brown',
+      category: 'Anatomica',
+      style: 'Sweaters',
+      product_line: 'Anatomica Wool Mock Neck Sweater',
+      price_cents: 25000,
+      price: '$250.00',
+      url: 'https://www.buckmason.com/products/brown-anatomica-wool-mock-neck-sweater',
+      image_url: 'https://cdn.example.com/sweater.jpg',
+      images: [{url: 'https://cdn.example.com/sweater-flat.jpg', type: 'shopify', position: 1}],
+      variants: [{
+        sku: 'SWEATERM',
+        size: 'M',
+        shopify_variant_id: 'v3',
+        online: {in_stock: true, status: 'low_stock', label: 'Low stock (3 left)'},
+        fulfillment: {pickup_locations: []},
+      }],
+    }],
+    ['4', {
+      id: 4,
+      name: 'Ford Standard Jean',
+      color: 'Indigo',
+      category: 'Jeans',
+      price_cents: 19800,
+      price: '$198.00',
+      url: 'https://www.buckmason.com/products/jean',
+      image_url: 'https://cdn.example.com/jean.jpg',
+      images: [{url: 'https://cdn.example.com/jean-flat.jpg', type: 'shopify', position: 1}],
+      variants: [{
+        sku: 'JEAN32',
+        size: '32',
+        shopify_variant_id: 'v4',
+        online: {in_stock: true, status: 'in_stock', label: 'In stock'},
+        fulfillment: {pickup_locations: []},
+      }],
+    }],
   ])
   const client = {mcpGet: async (endpoint: string) => products.get(endpoint.split('/').pop() || '')} as any
 
@@ -244,8 +295,10 @@ test('trip lookbook hydrates selected products and enforces complete looks', asy
 
   assert.equal(artifacts.lookbookId, '2026-08-john-collison')
   assert.equal(config.lookbook_title, 'John Collison · Spain August 2026 Edit')
-  assert.deepEqual(picks.map((pick) => pick.sku), ['SHIRTM', 'PANT32'])
+  assert.deepEqual(picks.map((pick) => pick.sku), ['SHIRTM', 'PANT32', 'SWEATERM', 'JEAN32'])
   assert.equal(picks[0].in_stock_online.label, 'In stock online; pickup available at Hayes Valley for size M')
+  assert.equal(picks[2].style, 'Sweaters')
+  assert.equal(picks[2].product_line, 'Anatomica Wool Mock Neck Sweater')
 })
 
 test('trip lookbook rejects incomplete looks before image generation', async () => {
@@ -437,4 +490,177 @@ test('premium build rejects look images from another lookbook marker', async () 
     () => buildHtmlLookbook({configPath, picksPath, outDir, lookImagesDir: looksDir}),
     /does not match/,
   )
+})
+
+test('outfit recheck prompt calls out garment order and wrong-bottom hard failures', () => {
+  const look: OutfitRecheckLookInput = {
+    id: 'look2',
+    title: 'HQ Comms Briefing',
+    heroPath: '/tmp/look2.png',
+    pieces: [
+      {index: 1, sku: 'JACKETM', name: 'Dress Navy Carry-On Jacket', category: 'Outerwear', color: 'Dress Navy', size: 'M', imageUrl: 'https://cdn.example.com/jacket.jpg'},
+      {index: 2, sku: 'POLOM', name: 'Black Johnny Collar Polo', category: 'Tees', color: 'Black', size: 'M', imageUrl: 'https://cdn.example.com/polo.jpg'},
+      {index: 3, sku: 'N00932', name: 'N009 Japanese Denim Maverick Slim Jean', category: 'Jeans', color: 'N009', size: '32', imageUrl: 'https://cdn.example.com/n009.jpg'},
+    ],
+  }
+
+  const prompt = buildLookRecheckPrompt(look)
+
+  assert.match(prompt, /Image 1 is the generated lookbook hero image/)
+  assert.match(prompt, /Images 2-4 are the exact garment references/)
+  assert.match(prompt, /N009 Japanese Denim Maverick Slim Jean/)
+  assert.match(prompt, /Wrong color family/)
+  assert.match(prompt, /bottoms rendered dark when the product reference is pale/)
+})
+
+test('outfit recheck normalizes wrong jeans into a hard failure report', () => {
+  const look: OutfitRecheckLookInput = {
+    id: 'look2',
+    title: 'HQ Comms Briefing',
+    heroPath: '/tmp/look2.png',
+    pieces: [{index: 1, sku: 'N00932', name: 'N009 Japanese Denim Maverick Slim Jean', category: 'Jeans', color: 'N009', size: '32'}],
+  }
+  const result = normalizeOutfitRecheckResponse({
+    look_id: 'model-echoed-wrong-id',
+    overall_pass: false,
+    severity: 'hard_fail',
+    items: [{
+      sku: 'N00932',
+      expected: 'pale ecru/off-white N009 jean',
+      observed: 'dark indigo denim',
+      pass: false,
+      severity: 'hard_fail',
+      note: 'Wrong jean color.',
+    }],
+    regeneration_prompt_addendum: 'Garment 1 must be pale ecru/off-white.',
+  }, look)
+  const report = buildOutfitRecheckReport({lookbookId: 'test-lookbook', looks: [result]})
+
+  assert.equal(report.ok, false)
+  assert.equal(result.look_id, 'look2')
+  assert.equal(report.hard_failures, 1)
+  assert.deepEqual(failedLookIds(report), ['look2'])
+  assert.match(renderOutfitRecheckSummary(report), /N00932/)
+  assert.match(renderOutfitRecheckSummary(report), /dark indigo denim/)
+})
+
+test('outfit recheck downgrades dark denim black ambiguity to a warning', () => {
+  const look: OutfitRecheckLookInput = {
+    id: 'look4',
+    title: 'Fogline Sweater Day',
+    heroPath: '/tmp/look4.png',
+    pieces: [{index: 1, sku: 'BM12125.1011B00732', name: 'B007 Japanese Denim Ford Standard Jean', category: 'Jeans', color: 'B007', size: '32'}],
+  }
+  const result = normalizeOutfitRecheckResponse({
+    look_id: 'look4',
+    overall_pass: false,
+    severity: 'hard_fail',
+    items: [{
+      sku: 'BM12125.1011B00732',
+      expected: 'dark Ford Standard denim',
+      observed: 'black jeans',
+      pass: false,
+      severity: 'hard_fail',
+      note: 'Jeans appear black instead of dark denim.',
+    }],
+    failures: ['Jeans appear black instead of dark denim.'],
+  }, look)
+  const report = buildOutfitRecheckReport({lookbookId: 'test-lookbook', looks: [result]})
+
+  assert.equal(result.overall_pass, true)
+  assert.equal(result.severity, 'warning')
+  assert.equal(result.items[0].severity, 'warning')
+  assert.equal(report.ok, true)
+  assert.equal(report.hard_failures, 0)
+  assert.equal(report.warnings, 2)
+  assert.deepEqual(result.failures, [])
+})
+
+test('outfit recheck downgrades dark B007 denim wording to a warning', () => {
+  const look: OutfitRecheckLookInput = {
+    id: 'look1',
+    title: 'Oyster Point Arrival',
+    heroPath: '/tmp/look1.png',
+    pieces: [{index: 1, sku: 'BM12125.1011B00732', name: 'B007 Japanese Denim Ford Standard Jean', category: 'Jeans', color: 'B007', size: '32'}],
+  }
+  const result = normalizeOutfitRecheckResponse({
+    look_id: 'look1',
+    overall_pass: false,
+    severity: 'hard_fail',
+    items: [{
+      sku: 'BM12125.1011B00732',
+      expected: 'B007 jeans',
+      observed: 'Dark jeans, not B007',
+      pass: false,
+      severity: 'hard_fail',
+      note: 'Jeans color does not match B007 reference.',
+    }],
+  }, look)
+
+  assert.equal(result.overall_pass, true)
+  assert.equal(result.severity, 'warning')
+  assert.equal(result.items[0].severity, 'warning')
+  assert.deepEqual(result.failures, [])
+})
+
+test('outfit recheck downgrades mock-neck collar ambiguity to a warning', () => {
+  const look: OutfitRecheckLookInput = {
+    id: 'look4',
+    title: 'Fogline Sweater Day',
+    heroPath: '/tmp/look4.png',
+    pieces: [{index: 1, sku: 'BM16597BRNM', name: 'Brown Anatomica Mock Neck Sweater', category: 'Anatomica', color: 'Brown', size: 'M'}],
+  }
+  const result = normalizeOutfitRecheckResponse({
+    look_id: 'look4',
+    overall_pass: false,
+    severity: 'hard_fail',
+    items: [{
+      sku: 'BM16597BRNM',
+      expected: 'rich brown mock-neck sweater',
+      observed: 'brown crewneck sweater',
+      pass: false,
+      severity: 'hard_fail',
+      note: 'The sweater is a crewneck instead of a mock-neck.',
+    }],
+  }, look)
+
+  assert.equal(result.overall_pass, true)
+  assert.equal(result.severity, 'warning')
+  assert.equal(result.items[0].severity, 'warning')
+  assert.deepEqual(result.failures, [])
+})
+
+test('outfit recheck fix addendum patches only failed image-plan looks', () => {
+  const imagePlan = {
+    model: 'gpt-image-2',
+    quality: 'high',
+    size: '1024x1536',
+    lookbook_id: 'test-lookbook',
+    generated_note: 'test',
+    looks: [
+      {id: 'look1', title: 'One', setting: '', composition: '', prompt: 'prompt one', garments: [], identity_references: [], output: 'looks/look1.png'},
+      {id: 'look2', title: 'Two', setting: '', composition: '', prompt: 'prompt two', garments: [], identity_references: [], output: 'looks/look2.png'},
+    ],
+  } as const
+  const report = buildOutfitRecheckReport({
+    lookbookId: 'test-lookbook',
+    looks: [{
+      look_id: 'look2',
+      title: 'Two',
+      overall_pass: false,
+      severity: 'hard_fail',
+      items: [],
+      warnings: [],
+      failures: ['N00932: expected pale ecru jeans, observed dark denim'],
+      regeneration_prompt_addendum: 'Render the N009 jean as pale ecru/off-white.',
+    }],
+  })
+
+  const patched = imagePlanWithRecheckAddenda(imagePlan, report)
+  const retry = filterImagePlanLooks(patched, failedLookIds(report))
+
+  assert.equal(patched.looks[0].prompt, 'prompt one')
+  assert.match(patched.looks[1].prompt, /OUTFIT RECHECK FIX ADDENDUM/)
+  assert.match(patched.looks[1].prompt, /Render the N009 jean as pale ecru/)
+  assert.deepEqual(retry.looks.map((look) => look.id), ['look2'])
 })

@@ -6,7 +6,15 @@ import {Client} from '../../lib/client.js'
 import {printJson, renderRecords} from '../../lib/output.js'
 import {buildHtmlLookbook} from '../../lookbook/build-html.js'
 import {deployWithWrangler, prepareCloudflarePagesDeploy} from '../../lookbook/deploy.js'
-import {buildLookbookImagePlan, generateLookImages} from '../../lookbook/image-generation.js'
+import {buildLookbookImagePlan, generateLookImages, type LookbookImagePlan} from '../../lookbook/image-generation.js'
+import {
+  failedLookIds,
+  filterImagePlanLooks,
+  imagePlanWithRecheckAddenda,
+  recheckLookbook,
+  renderOutfitRecheckSummary,
+  type OutfitRecheckReport,
+} from '../../lookbook/recheck.js'
 import {
   buildTripArtifacts,
   buildTripConfig,
@@ -34,6 +42,11 @@ export default class LookbookTrip extends Command {
     project: Flags.string({description: 'Cloudflare Pages project name. Defaults to plan.project or buckmason-<lookbook-id>.'}),
     'no-tryon': Flags.boolean({description: 'Build editorial product-image tier instead of premium generated try-on images'}),
     'generate-images': Flags.boolean({description: 'Call gpt-image-2 for missing premium look images'}),
+    recheck: Flags.boolean({description: 'Visually verify generated outfits against selected product references before deploy'}),
+    'recheck-fix': Flags.boolean({description: 'Regenerate failed outfits once the visual recheck suggests a fix. Implies --recheck'}),
+    'recheck-max-retries': Flags.integer({description: 'Maximum outfit recheck fix/regenerate attempts', default: 1}),
+    'recheck-fail-on-warning': Flags.boolean({description: 'Treat outfit recheck warnings as failures'}),
+    'recheck-model': Flags.string({description: 'Vision model for outfit recheck', default: 'gpt-4o'}),
     concurrency: Flags.integer({description: 'Concurrent premium image edit calls; defaults to number of looks'}),
     'api-key-env': Flags.string({description: 'Env var containing the OpenAI key', default: 'OPENAI_API_KEY'}),
     'api-base': Flags.string({description: 'OpenAI API base URL', default: 'https://api.openai.com'}),
@@ -65,11 +78,13 @@ export default class LookbookTrip extends Command {
 
     const tier = flags['no-tryon'] ? 'editorial' : 'premium'
     let generatedImages: Array<{look_id: string; output: string; ok: boolean; error?: string}> = []
+    let outfitRecheck: OutfitRecheckReport | null = null
     if (tier === 'premium') {
-      const imagePlan = buildLookbookImagePlan({config, picks, profile})
+      let imagePlan: LookbookImagePlan = buildLookbookImagePlan({config, picks, profile})
       await writeFile(artifacts.imagePlanPath, `${JSON.stringify(imagePlan, null, 2)}\n`)
       const missing = imagePlan.looks.filter((look) => !pathExists(path.join(artifacts.looksDir, `${look.id}.png`)))
-      if (missing.length && !flags['generate-images']) {
+      const canGenerateMissing = flags['generate-images'] || flags['recheck-fix']
+      if (missing.length && !canGenerateMissing) {
         this.log('READY_FOR_PREMIUM_IMAGE_STEP')
         this.log(`Image plan: ${artifacts.imagePlanPath}`)
         this.log(`Generate: buckmason lookbook trip --plan ${flags.plan} --generate-images${flags.deploy ? ' --deploy' : ''}`)
@@ -89,6 +104,48 @@ export default class LookbookTrip extends Command {
         })
         this.log(renderRecords(generatedImages, ['look_id', 'ok', 'output', 'error'], 'table'))
         if (generatedImages.some((result) => !result.ok)) throw new Error('Premium image generation failed.')
+      }
+
+      if (flags.recheck || flags['recheck-fix']) {
+        const apiKey = process.env[flags['api-key-env']] || ''
+        if (!apiKey.startsWith('sk-')) throw new Error(`${flags['api-key-env']} must be set to an OpenAI API key.`)
+        outfitRecheck = await recheckLookbook({
+          runDir: artifacts.runDir,
+          apiKey,
+          apiBase: flags['api-base'],
+          model: flags['recheck-model'],
+          failOnWarning: flags['recheck-fail-on-warning'],
+        })
+
+        let attempts = 0
+        while (!outfitRecheck.ok && flags['recheck-fix'] && attempts < flags['recheck-max-retries']) {
+          const ids = failedLookIds(outfitRecheck, {failOnWarning: flags['recheck-fail-on-warning']})
+          if (!ids.length) break
+          attempts += 1
+          imagePlan = imagePlanWithRecheckAddenda(imagePlan, outfitRecheck, {failOnWarning: flags['recheck-fail-on-warning']})
+          await writeFile(artifacts.imagePlanPath, `${JSON.stringify(imagePlan, null, 2)}\n`)
+          this.log(`Regenerating ${ids.join(', ')} after outfit recheck failure...`)
+          const retryGenerated = await generateLookImages({
+            plan: filterImagePlanLooks(imagePlan, ids),
+            outDir: artifacts.looksDir,
+            apiKey,
+            apiBase: flags['api-base'],
+            concurrency: flags.concurrency,
+          })
+          generatedImages = [...generatedImages, ...retryGenerated]
+          this.log(renderRecords(retryGenerated, ['look_id', 'ok', 'output', 'error'], 'table'))
+          if (retryGenerated.some((result) => !result.ok)) throw new Error('Premium image regeneration failed.')
+          outfitRecheck = await recheckLookbook({
+            runDir: artifacts.runDir,
+            apiKey,
+            apiBase: flags['api-base'],
+            model: flags['recheck-model'],
+            failOnWarning: flags['recheck-fail-on-warning'],
+          })
+        }
+
+        this.log(renderOutfitRecheckSummary(outfitRecheck))
+        if (!outfitRecheck.ok) throw new Error('Outfit recheck failed. Rerun with --recheck-fix to regenerate failed looks before deploy.')
       }
 
       await buildHtmlLookbook({configPath: artifacts.configPath, picksPath: artifacts.picksPath, outDir: artifacts.deployDir, lookImagesDir: artifacts.looksDir})
@@ -135,6 +192,7 @@ export default class LookbookTrip extends Command {
       looks: config.looks.length,
       items: picks.length,
       generated_images: generatedImages.length,
+      outfit_recheck: outfitRecheck,
       smoke,
     }
     if (flags.json) this.log(printJson(summary))

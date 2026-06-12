@@ -1,6 +1,6 @@
 {
   "name": "@buckmason/cli",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Customer-facing Buck Mason CLI for agents: catalog, stock, orders, returns, checkout handoffs, and lookbooks.",
   "bin": {
     "buckmason": "bin/run.js"

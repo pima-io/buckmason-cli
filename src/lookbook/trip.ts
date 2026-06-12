@@ -226,7 +226,7 @@ export async function smokeCheckLookbook(url: string, fetchImpl: typeof fetch = 
 export function enforceCompleteLooks(plan: TripPlan, picks: Record<string, any>[]): void {
   for (const [index, look] of plan.looks.entries()) {
     const lookId = look.id || `look${index + 1}`
-    const categories = picks.filter((pick) => pick.look === lookId).map((pick) => categoryBucket(pick.category))
+    const categories = picks.filter((pick) => pick.look === lookId).map((pick) => productBucket(pick))
     if (!categories.includes('top')) throw new Error(`${lookId} is missing a top. Add a shirt, tee, polo, sweater, or knit.`)
     if (!categories.includes('bottom')) throw new Error(`${lookId} is missing a bottom. Add a pant, jean, trouser, or short.`)
   }
@@ -264,6 +264,8 @@ function pickFromProduct(options: {
     name: product.name,
     color: product.color,
     category: product.category,
+    style: product.style,
+    product_line: product.product_line,
     picked_size: String(variant.size),
     sku: variant.sku,
     shopify_variant_id: variant.shopify_variant_id,
@@ -284,9 +286,13 @@ function pickFromProduct(options: {
 
 function preferredSize(product: any, profile: Record<string, any>): string {
   const sizes = profile.sizes || {}
-  const bucket = categoryBucket(product.category)
+  const bucket = categoryBucket([product.category, product.style, product.product_line].join(' '))
   if (bucket === 'bottom') return sizes.pant || sizes.jean || sizes.short || '32'
   return sizes.shirt || sizes.tee || sizes.jacket || 'M'
+}
+
+function productBucket(product: Record<string, any>): 'top' | 'bottom' | 'other' {
+  return categoryBucket([product.category, product.style, product.product_line, product.name].join(' '))
 }
 
 function categoryBucket(category: unknown): 'top' | 'bottom' | 'other' {
